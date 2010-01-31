@@ -10,9 +10,9 @@ if ($domain == 'localhost') {
 		$config = array(
 		  /* db */
 		  'db_host' => 'localhost', /* optional, default is localhost */
-		  'db_name' => 'rubrick',
-		  'db_user' => 'rubrick',
-		  'db_pwd' => 'rubrick',
+		  'db_name' => '***',
+		  'db_user' => '***',
+		  'db_pwd' => '****',
 
 
 		  /* store name */
@@ -27,8 +27,8 @@ if ($domain == 'localhost') {
 			'dump' /* dump is a special command for streaming SPOG export */
 		  ),
 		  'endpoint_timeout' => 60, /* not implemented in ARC2 preview */
-		  'endpoint_read_key' => 'readkey', /* optional */
-		  'endpoint_write_key' => 'writekey', /* optional */		
+		  'endpoint_read_key' => '***', /* optional */
+		  'endpoint_write_key' => '***', /* optional */		
 		);
 	
 	} else {
@@ -36,9 +36,9 @@ if ($domain == 'localhost') {
 		$config = array(
 		  /* db */
 		  'db_host' => 'localhost', /* optional, default is localhost */
-		  'db_pwd' => 'rubr1ck',
-		 'db_name' => 'patrickg_arcbrick',   
-		  'db_user' => 'patrickg_rubrick', 
+		  'db_pwd' => '***',
+		 'db_name' => '***',   
+		  'db_user' => '****', 
 
 		  /* store name */
 		  'store_name' => '',
