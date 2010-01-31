@@ -29,7 +29,7 @@ ul.field-display li {
     cursor: pointer;
 }
 
-div.rubric-contexts-container li {
+div#rubric-contexts-container li {
 	display:block;
 }
 

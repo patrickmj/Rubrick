@@ -137,7 +137,7 @@ contextsInit = {defaultValue:'http://code.rubrick-jetpack.org/Context1',
                 button.rj = rj;
                 button.cj = cj;
                 button.test = 'tesssst!';
-                $.post('http://localhost/testJS/jetpacks/rubrick/createRubric.php', { rJSON : rj , cJSON: cj  } );           
+                $.post('http://code.rubrick-jetpack.org/createRubric.php', { rJSON : rj , cJSON: cj  } );           
             }
         
         

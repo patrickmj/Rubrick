@@ -37,6 +37,10 @@ ul.field-display li.selected {
     background-image: url(../images/tick.gif);
 }
 
+a {
+  cursor: pointer;
+}
+
 a.upButton, a.downButton {
     display: block;
 }

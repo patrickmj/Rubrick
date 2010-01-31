@@ -22,7 +22,8 @@ div.rubricContainer {
 
 div.rubricContainer table {
 	border-top: 2px solid #800000;
-
+	width: 100%;
+	margin: 2px 5px 2px 5px;
 
 }
 
@@ -69,12 +70,8 @@ div.rubricContainer .action {
 div.rubricContainer div.info {
 
 	height: 30px;
-	width: 100%;
+	width: 95%;
 }
-
-
-
-
 
 
 div.rubricContainer div.state {

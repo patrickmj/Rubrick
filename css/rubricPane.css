@@ -1,23 +1,17 @@
 div.rubricContainer * {
-
 	margin: 0px;
 	padding: 0px;
-
 }
 
 
 div.rubricContainer .hidden {
-
 	display: none;
-
 }
 
 div.rubricContainer {
-
 	border: 1px dashed #800000;
 	-moz-border-radius: 5px ;
 	background-color: white;
-
 }
 
 div.rubricContainer table {
@@ -45,9 +39,6 @@ div.rubricContainer .lineValContainer {
 	margin: 0px;
 	cursor: pointer;
 	min-width: 120px;
-
-
-
 }
 
 
@@ -70,12 +61,8 @@ div.rubricContainer .action {
 div.rubricContainer div.info {
 
 	height: 30px;
-	width: 100%;
+	width: 95%;
 }
-
-
-
-
 
 
 div.rubricContainer div.state {
@@ -97,11 +84,8 @@ div.rubricContainer div.stats {
 }
 
 div.rubricContainer div.stats p {
-
 	margin: 0px;
 	padding: 0px;
-
-
 }
 
 div.rubricContainer div.graph {
