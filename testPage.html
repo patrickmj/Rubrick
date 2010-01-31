@@ -1,0 +1,279 @@
+<html>
+<head>
+
+<script type="text/javascript" src="./js/jquery/jquery.js"></script>
+<script type="text/javascript">
+/*
+
+var recordings;
+ $(document).ready(function(){
+
+setup();
+
+recordings = {"http:\/\/data.rubrick-jetpack.org\/Recordings\/8b8dec2ca44fbc7317d3e278b6c80f7f48372226":{"recordedLineVals":["http:\/\/data.rubrick-jetpack.org\/RubricLines\/19e3b4758bfa340c70f0a8289e2db05ed5e38935-v3","http:\/\/data.rubrick-jetpack.org\/RubricLines\/36308cfe643dc7bf317b8184454d6758fe54e1d8-v5"],"page":"http:\/\/localhost\/testJS\/jetpacks\/rubrick\/testPage.html"},"http:\/\/data.rubrick-jetpack.org\/Recordings\/51fb7a89958e830c40de959b0e11b91c0be66d6a":{"recordedLineVals":["http:\/\/data.rubrick-jetpack.org\/RubricLines\/36308cfe643dc7bf317b8184454d6758fe54e1d8-v4","http:\/\/data.rubrick-jetpack.org\/RubricLines\/19e3b4758bfa340c70f0a8289e2db05ed5e38935-v4"],"page":"http:\/\/localhost\/testJS\/jetpacks\/rubrick\/testPage.html"}};
+
+recordings.size = function() {
+				var size = 0 ; 
+				for(var uri in this) {
+					if(typeof this[uri] != 'function') {
+						size++;
+					}
+				}
+				return size;
+			};
+recordings.countURIsInProperty = function(prp, uri) {
+				var count = 0;
+				for each(var obj in this) {
+					if(typeof obj != 'function') {
+						if( obj[prp].indexOf(uri) != -1 ) {
+							count++;
+						}
+					}
+				}
+				return count;
+			};
+
+ });
+
+displayRecordedLineVals = function() {
+	//var panel = Rubrick.rDiv; //this will change when panels work in jetpack
+	var lineValContainers = $('.lineValContainer');
+	// get all the lineValue uris.	
+	var totalRecs = recordings.size();
+
+	$('.lineValContainer').each(function() {
+
+		var count = recordings.countURIsInProperty('recordedLineVals',  this.uri );
+		if(count > 0 ) {
+			$(this).addClass('recorded');
+		}
+
+		if(totalRecs > 1) {
+			//display with visual cue to relative weights
+
+		}
+
+	});
+
+}
+
+//	var panel = R.rDiv; //this will change when panels work in jetpack
+	var lineValContainers = $('.lineValContainer');
+
+function setup() {
+	tds = document.getElementsByTagName('td');
+	for(var i = 0; i< tds.length; i++) {
+		tds[i].uri = "uri";
+	}
+	tds[1].uri = 'http://data.rubrick-jetpack.org/RubricLines/36308cfe643dc7bf317b8184454d6758fe54e1d8-v5';
+}
+
+function test() {
+	// get all the lineValue uris.	
+	var lineValURIs = [];
+	$('.lineValContainer').each(function() {lineValURIs[lineValURIs.length] = $(this).uri});
+alert(lineValURIs.length);
+}
+*/
+</script>
+
+<style type="text/css">
+
+.hidden {
+
+	display: none;
+
+}
+
+div.rubricContainer {
+
+	border: 2px dashed black;
+
+
+}
+
+table {
+
+	width: 92%;
+
+}
+
+table tr {
+
+	width: 15%;
+}
+
+td {
+
+	width: 100px;
+
+}
+
+.lineValContainer {
+
+	border: 1px solid black;
+	
+	cursor: pointer;
+	min-width: 120px;
+
+
+
+}
+
+
+.recorded {
+	background-color: #9CEB91;
+}
+
+
+.closeLink {
+
+	float:right;
+	cursor: pointer;
+	margin: 3px;
+	padding: 2px;
+}
+
+button.send {
+	float:right;
+}
+
+div.info {
+
+	height: 30px;
+	width: 100%;
+}
+
+
+
+
+
+
+div.state {
+	background-repeat: no-repeat;
+	float:left;
+	width: 25px;
+	height: 25px;
+
+}
+
+.selected div.state {
+	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Rtick.png');
+}
+
+div.stats {
+
+	font-size: 12px;
+	text-align: center;
+}
+
+div.stats p {
+
+	margin: 0px;
+	padding: 0px;
+
+
+}
+
+div.graph {
+	margin-left: 30px;
+	background-color: red;
+
+}
+
+
+
+</style>
+
+
+</head>
+
+
+<body>
+
+
+
+<table>
+<tbody>
+
+<tr id="testrow">
+
+
+
+<td class="lineValContainer selected">
+<div class="info">
+	<div class="state">
+	</div>
+
+	<div class="graph">
+		<div class="stats">
+			<span class="count">2</span>
+			<span class="divBy"> / </span>
+			<span class="total">7</span>
+		</div>
+	</div>
+</div>
+<div class="desc">
+	<p class="desc">desc</p>
+</div>
+
+
+
+
+
+<td class="lineValContainer selected">
+<div class="info">
+	<div class="state">
+	</div>
+
+	<div class="graph">
+		<div class="stats">
+			<span class="count">4</span>
+			<span class="divBy"> / </span>
+			<span class="total">7</span>
+		</div>
+	</div>
+</div>
+<div class="desc">
+	<p class="desc">desc</p>
+</div>
+
+
+
+
+
+<td class="lineValContainer selected">
+<div class="info">
+	<div class="state">
+	</div>
+
+	<div class="graph">
+		<div class="stats">
+			<span class="count">1</span>
+			<span class="divBy"> / </span>
+			<span class="total">7</span>
+		</div>
+	</div>
+</div>
+<div class="desc">
+	<p class="desc">desc</p>
+</div>
+
+
+
+
+
+</tr>
+
+
+</tbody>
+</table>
+
+<div id="">
+
+
+</body>
+
+
+
+</html>

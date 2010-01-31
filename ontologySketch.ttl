@@ -1,0 +1,189 @@
+
+r:Rubric a rdfs:Class .
+	
+r:RubricLine a rdfs:Class .
+
+r:RubricLineValue a rdfs:Class .
+
+r:Context a rdfs:Class .
+
+r:RubricContext a rdfs:Class ; 
+	rdfs:subClassOf r:Context .
+
+
+r:Submission a rdfs:Class . 
+
+r:Recording a rdfs:Class . 
+
+r:RubricRecording a rdfs:Class ;
+	rdfs:subClassOf r:Recording .
+
+
+
+r:hasContext a rdfs:Property ; 
+	rdfs:domain r:Recording ; 
+	rdfs:range r:Context . 
+
+r:hasRecording a rdfs:Property ; 
+	rdfs:domain r:Context;
+	rdfs:range r:Recording .
+
+r:hasRubricRecording a rdfs:Property;
+	rdfs:subPropertyOf r:hasRecording ; 
+	rdfs:domain r:RubricContext ; 
+	rdfs:range r:RubricRecording .
+
+r:hasSubmission a rdfs:Property ; 
+	rdfs:domain r:Context ; 
+	rdfs:range r:Submission . 
+
+
+
+r:appliesRubric a rdfs:Property ; 
+	rdfs:domain r:RubricRecording ; 
+	rdfs:range r:Rubric . 
+
+r:hasRubricLineValue a rdfs:Property ; 
+	rdfs:domain r:RubricRecording ;
+	rdfs:range r:RubricLineValue ;
+
+r:recordedBy a rdfs:Property ;
+	rdfs:domain r:Recording ; 
+	rdfs:range foaf:Person . 
+
+r:hasRubric a rdfs:Property ; 
+	rdfs:domain r:RubricContext ;
+	rdfs:range r:Rubric .
+
+r_data:RubricContext1 a r:RubricContext ; 
+	r:hasRubric <http://rubrick.org/Rubrics/cb2907cdfcdcd3897b2eb90cab973dba8c7b4429> ;
+	r:name "TestContext" ; 
+	r:hasSubmission r_data:TestSubmission ; 
+	r:hasRubricRecording r_data:Recording1 . 
+
+r_data:RubricRecording1 a r:RubricRecording ;
+	r:note "This Rocks!" ; 
+	r:recordedBy r_data:PatrickMJ ; 
+	r:hasSubmission r_data:TestSubmission ; 
+	r:appliesRubric <http://rubrick.org/Rubrics/cb2907cdfcdcd3897b2eb90cab973dba8c7b4429> ;
+	r:hasRecordedRubricLineValue <http://rubrick.org/Lines/6fba02c1929fdbac20e7c56e5aa35205cf419f5b-v1> . 
+
+r_data:TestSubmission a r:Submission ; 
+	r:hasPage r_data:demoPage ; 
+	r:submittedBy r_data:Student1 ; 
+	r:note "Grade me!" .
+
+
+
+
+
+
+
+PREFIX r: <http://rubric.org/vocab/>
+PREFIX r_data: <http://rubric.org/>
+
+SELECT DISTINCT ?sub ?context ?rubric ?lVal ?lValDesc ?lValScore WHERE {
+
+  ?sub a r:Submission .
+  ?context r:hasSubmission ?sub .
+  ?context r:hasRubric ?rubric . 
+  ?rubric r:hasRubricLine ?line  . 
+  ?line r:hasRubricLineValue ?lVal .
+  ?lVal r:hasDescription ?lValDesc ;
+        r:hasScore ?lValScore . 
+
+}
+
+
+
+PREFIX r: <http://rubric.org/vocab/>
+PREFIX r_data: <http://rubric.org/>
+
+SELECT DISTINCT ?rec ?recLVal  ?lVal WHERE {
+
+  ?rec a r:RubricRecording ;
+     r:hasSubmission ?sub ;
+     r:hasRecordedRubricLineValue ?recLVal ;
+     r:appliesRubric ?rubric . 
+
+  ?rubric r:hasRubricLine ?line  . 
+  ?line r:hasRubricLineValue ?lVal .
+  ?lVal r:hasDescription ?lValDesc ;
+        r:hasScore ?lValScore . 
+
+
+}
+
+
+
+PREFIX r: <http://rubric.org/vocab/>
+PREFIX r_data: <http://rubric.org/>
+
+SELECT DISTINCT ?sub ?subNote ?recVal ?lVal WHERE {
+
+   ?sub r:hasPage r_data:demoPage ;
+        r:note ?subNote  .  
+
+  ?context r:hasSubmission ?sub ; 
+        r:hasRubric ?rubric . 
+
+  ?rec r:hasSubmission ?sub ;
+     r:hasRecordedRubricLineValue ?recVal .
+
+   ?rubric r:hasRubricLine ?rLine .
+
+  ?rLine r:hasRubricLineValue ?lVal .
+  
+  ?lVal r:hasDescription ?lValDesc ;
+        r:hasScore ?lValScore . 
+
+
+}
+
+
+PREFIX r: <http://rubric.org/vocab/>
+PREFIX r_data: <http://rubric.org/>
+
+SELECT DISTINCT ?recVal ?lValDesc  ?lValScore WHERE {
+
+   ?sub r:hasPage r_data:demoPage ;
+        r:note ?subNote  .  
+
+  ?context r:hasSubmission ?sub ; 
+        r:hasRubric ?rubric . 
+
+  ?rec r:hasSubmission ?sub ;
+     r:hasRecordedRubricLineValue ?recVal .
+
+   ?rubric r:hasRubricLine ?rLine .
+
+  ?rLine r:hasRubricLineValue ?lVal .
+  
+  ?lVal r:hasDescription ?lValDesc ;
+        r:hasScore ?lValScore . 
+
+
+FILTER (?recVal = ?lVal)
+
+}
+
+
+
+
+
+
+
+
+1. Student finishes writing the post, and opens up the slidebar. Ticks a checkbox with the name of the assignment, adds a note, and hits "Submit"
+2. Instructor opens up FF and clicks the Rubric icon in the status bar.
+3. A notification appears telling the instructor that a new submission is ready for review.
+4. Instructor opens the slidebar and follows a link to the blog post.
+5. From a FF menu, instructor selects the rubric to apply.
+6. Instructor applies the rubric and hits "Save" in the slidebar.
+7. Student opens FF and click the Rubric icon in the status bar.
+8. A notification appears telling the student that their post has been reviewed.
+9. Student follows link in the slidebar to the review of the post.
+
+
+
+

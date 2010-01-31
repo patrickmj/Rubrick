@@ -1,0 +1,284 @@
+
+var RowsManager = {
+    
+    rows: [],
+    sortFieldName: 'order',
+    hiddenInput: null,
+    json: '',
+    
+    init: function (rowsInitArray, fieldsConfigArray) {
+        
+        
+        this .tbody = document.getElementById('rubrickBody');
+        this .hiddenInput = document.getElementById('input-hiddenJSON');
+        
+        
+        for (var r = 0; r < rowsInitArray.length; r++) {
+            newRow = new Row(fieldsConfigArray, rowsInitArray[r])
+            this .rows.push(newRow);
+            this .tbody.appendChild(newRow.tr);
+        }
+        
+        this .reorderRows();
+        this .setJSON();
+    },
+    
+    
+    reorderRows: function (sortField) {
+        if (sortField) this .sortFieldName = sortField;
+        this .rows.sort(this ._rowSorter);
+        
+        while (this .tbody.childNodes.length > 0) {
+            this .tbody.removeChild(this .tbody.firstChild);
+        }
+        
+        for (var i = 0; i < this .rows.length; i++) {
+            this .tbody.appendChild(this .rows[i].tr);
+        }
+    },
+    
+    _rowSorter: function (a, b) {
+        //TODO: allow passing a function to reorderRows
+        return a.fields[RowsManager.sortFieldName].values[0] - b.fields[RowsManager.sortFieldName].values[0];
+    },
+    
+    
+    addRow: function () {
+        
+        newRow = new Row(fieldsConfigArray);
+        this .rows.push(newRow);
+        this .tbody.appendChild(newRow.tr);
+        this .reorderRows();
+    },
+    
+    //TODO: refactor deleteRow and undeleteRow
+    
+    deleteRow: function (tr, event) {
+        this .stopEvent(event);
+        
+        jQuery(tr) .addClass('userprofiles-highlight');
+        jQuery('tr#' + tr.id + ' a.userprofiles-undelete') .show();
+        jQuery('tr#' + tr.id + ' a.userprofiles-delete') .hide();
+        
+        //TODO: set the Row's action to 'delete'
+        //        this.updateRow('delete', tr, event);
+    },
+    
+    undeleteRow: function (tr, event) {
+        this .stopEvent(event);
+        jQuery(tr) .removeClass('userprofiles-highlight');
+        jQuery('tr#' + tr.id + ' a.userprofiles-delete') .show();
+        jQuery('tr#' + tr.id + ' a.userprofiles-undelete') .hide();
+        //TODO: set the Row's action to 'delete'
+    },
+    
+    
+    
+    setJSON: function () {
+        var jsonStr = '';
+        jsonStr += ' [ ';
+        for (var r = 0; r < this .rows.length; r++) {
+            this .rows[r].setJSON();
+            jsonStr += this .rows[r].getJSON();
+            if (r != this .rows.length - 1) jsonStr += ' , ';
+        }
+        jsonStr += ' ] ';
+        this .hiddenInput.setAttribute('value', jsonStr);
+        this .json = jsonStr;
+    },
+    
+    stopEvent : function (e) {
+        if (! e) var e = window.event;
+        
+        //e.cancelBubble is supported by IE - this will kill the bubbling process.
+        e.cancelBubble = true;
+        e.returnValue = false;
+        
+        //e.stopPropagation works only in Firefox.
+        if (e.stopPropagation) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        return false;
+    }
+}
+
+function Row(fieldsConfigArray, rowInitObj) {
+    
+    this .tr = document.createElement('tr');
+    this .actionsTD;
+    this .action = rowInitObj ? 'update' : 'create';
+    this .deleted = false;
+    
+    this .json = '';
+    this .fields = {
+    };
+    
+    if (rowInitObj) {
+        this .recordId = rowInitObj.recordId;
+    }
+    
+    //merge the config values object and the init values from database
+    
+    
+    
+    actionsTD = document.createElement('td');
+    this .actionsTD = actionsTD;
+    
+    infoTD = document.createElement('td');
+    this .tr.appendChild(infoTD);
+    
+    for (var i = 0; i < fieldsConfigArray.length; i++) {
+        
+        //create a new fieldConfigObj so I don't muck up the original one
+        configObj = {
+        };
+        for (var p in fieldsConfigArray[i].configObj) {
+            configObj[p] = fieldsConfigArray[i].configObj[p];
+        }
+        
+        //merge with init values
+        if (rowInitObj) {
+            if (rowInitObj.fieldValues[fieldsConfigArray[i].fieldName]) {
+                configObj.defaultValue = false;
+                
+                configObj.values = rowInitObj.fieldValues[fieldsConfigArray[i].fieldName];
+            }
+        }
+        newField = FieldFactory.getField(fieldsConfigArray[i].type, fieldsConfigArray[i].fieldName, configObj);
+        
+        
+        switch (newField.fieldName) {
+            case 'order' :
+            actionsTD.appendChild(newField.container);
+            
+            break;
+            
+            case 'Description' :            
+            case 'Tags' :
+            case 'Name':
+            case 'Public':
+            heading = document.createElement('h3');
+            heading.appendChild(document.createTextNode(newField.fieldName) );
+            newField.container.insertBefore( heading ,newField.container.firstChild  );
+            infoTD.appendChild(newField.container);
+            break;
+            
+            default :
+            newTD = document.createElement('td');
+            newTD.appendChild(newField.container);
+            this .tr.appendChild(newTD);
+            break;
+        }
+        
+        
+        this .fields[newField.fieldName] = newField;
+    }
+
+/*    
+    addValueButton = document.createElement('a');
+    addValueButton.appendChild(document.createTextNode('Add Value'));
+    jQuery(addValueButton) .addClass('addValue')
+    addValueButton.action = 'addValue';
+    actionsTD.appendChild(addValueButton);
+ */   
+    
+    deleteButton = document.createElement('a');
+    deleteButton.appendChild(document.createTextNode('Delete'));
+    deleteButton.setAttribute('class', 'delete');
+    deleteButton.setAttribute('style', 'display: inline');
+    deleteButton.action = 'delete';
+    
+    undeleteButton = document.createElement('a');
+    undeleteButton.appendChild(document.createTextNode('Undelete'));
+    undeleteButton.setAttribute('class', 'undelete');
+    undeleteButton.action = 'undelete';
+    
+    this .deleteButton = deleteButton;
+    this .undeleteButton = undeleteButton;
+    jQuery(undeleteButton) .hide();
+    
+    actionsTD.appendChild(deleteButton);
+    actionsTD.appendChild(undeleteButton);
+    
+    this .tr.appendChild(actionsTD);
+    this .tr.manager = this;
+    this .tr.setAttribute('onclick', 'this.manager.processClick(event)');
+    
+    
+    this .processClick = function (event) {
+        if (! event) var event = window.event;
+        target = event.target ? event.target : event.srcElement;
+        stopEvent(event);
+        switch (target.action) {
+            
+            case 'delete' :
+            this .deleted = true;
+            jQuery(this .tr) .addClass('highlight');
+            jQuery(this .undeleteButton) .show();
+            jQuery(this .deleteButton) .hide();
+            jQuery(this .fields[ 'order' ].container) .hide();
+            break;
+            
+            case 'undelete' :
+            this .deleted = false;
+            jQuery(this .tr) .removeClass('highlight');
+            jQuery(this .undeleteButton) .hide();
+            jQuery(this .deleteButton) .show();
+            jQuery(this .fields[ 'order' ].container) .show();
+            break;
+            
+            case 'addValue' :
+            newValTD = document.createElement('td');
+            newField = FieldFactory.getField('LongTextField', 'DummyLabel', {
+                defaultValue: 'Describe the rubric value here'
+            });
+            newValTD.appendChild(newField.container);
+            this .tr.insertBefore(newValTD, this .actionsTD);
+            
+            break;
+            default :
+            
+            break;
+        }
+        RowsManager.setJSON();
+    };
+    
+    this .setJSON = function () {
+        if (this .deleted) {
+            if (this .action == 'update') {
+                this .action = 'delete';
+            } else {
+                this .action = 'ignore';
+            }
+        }
+        
+        
+        jsonStr = ' { ';
+        jsonStr += ' "rubrickLineURI" : "' + this .recordId + '" , ';
+        jsonStr += ' "action" : "' + this .action + '" , ';
+        
+        //loop through the fields to add their data as an array of objects
+        jsonStr += ' "fields": [';
+        for each(var field in this .fields) {
+            jsonStr += field.getJSON();
+            jsonStr += ' ,';
+        }
+        //strip off the last comma
+        
+        jsonStr = jsonStr.slice(0, jsonStr.length - 1);
+        //close up the array of fields
+        jsonStr += ' ] ';
+        //close up the row JSON object
+        jsonStr += ' } ';
+        this .json = jsonStr;
+    };
+    
+    this .getJSON = function () {
+        return this .json;
+    };
+    
+    this .addField = function (field) {
+        this .fields.push(field);
+    };
+}

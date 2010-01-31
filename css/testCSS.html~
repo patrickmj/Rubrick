@@ -1,0 +1,131 @@
+<html>
+<head>
+<style type="text/css">
+
+body {
+width: 200px;
+}
+
+h1 {
+
+}
+
+h2 {
+	font-size: 10pt;
+	float:left;
+	margin: 0px;
+
+}
+
+h3 {
+	font-size: 10pt;
+}
+
+h4 {
+	font-size: 10pt;
+}
+
+p {
+	font-size: 10pt;
+}
+
+input {
+	font-size: 10pt;
+}
+
+a {
+	font-size: 10pt;
+}
+
+div.slidebarPaneHeader {
+	margin-bottom: 3px;
+	height: 20px;
+}
+
+div.slidebarPaneBody {
+	margin: 2px;
+	clear: both;
+
+}
+
+div.maxMin {
+	float: right;
+	display:inline;
+	height: 16px;
+}
+
+img.max, img.min {
+	width: 16px;
+	height: 16px;
+	margin: 2px;
+	cursor: pointer;
+}
+
+
+a {
+
+	cursor: pointer; 
+	display:block;
+}
+
+a.lineNameLink {
+
+
+}
+
+
+.focused {
+
+	background-color: yellow;
+
+}
+
+.hidden {
+
+	display: none;
+
+}
+
+span.success {
+
+	color: blue;
+	font-variant: italic;
+
+}
+</style>
+
+</head>
+<body>
+
+	<div class="slideBarPane" id="login">
+		<div class="slideBarPaneHeader">
+			<h2>Login/Register</h2>
+
+			<div class="maxMin">
+				<img class="min" src="http://localhost/testJS/jetpacks/rubrick/images/minimize.png"/>
+				<img class="max" src="http://localhost/testJS/jetpacks/rubrick/images/maximize.png"
+				/>
+			</div>
+		</div>
+		<div class="slideBarPaneBody">
+			<div id="loginInfo">
+				<p>Username: <input id="nick-login" type="text"/></p>
+				<p>Password: <input id="pwd-login" type="text"/></p>
+				<a onclick="Rubrick.login()">Login</a>
+			</div>
+			<div id="register">
+				<p>Username: <input id="nick" type="text"/></p>
+				<p>Email: <input id="email" type="text"/></p>
+				<p>Password: <input id="pwd" type="text"/></p>
+				<a onclick="Rubrick.register()">Register</a>
+			</div>
+			<div id="logout">
+				<a onclick="Rubrick.logout()">Logout</a>
+			</div>
+		</div>
+	</div>
+
+</body>
+
+
+</html>
