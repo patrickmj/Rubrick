@@ -1,8 +1,0 @@
-    <html>
-    <head>
-      <title>My First Jetpack</title>
-      <link rel="jetpack" href="http://code.rubrick-jetpack.org/js/rubrick/Rubrick.js"/>
-    </head>
-    <body>He're the Rubrick Jetpack. It's buggy, any data you are lucky enough to send could be destroyed at any moment, and it's still in pre-alpha development. That said, good luck! Hope it does something with the potential to be useful!</body>
-    </html>
-
