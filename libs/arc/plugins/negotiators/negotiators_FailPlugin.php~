@@ -1,0 +1,22 @@
+<?php
+
+
+
+class negotiators_FailPlugin extends negotiators_DataNegotiatorPlugin{
+
+	static function applyTest($testVal)
+	{
+		if($testVal == 'skipme') return false;
+
+		return true;
+
+	}
+
+
+
+
+}
+
+
+
+?>

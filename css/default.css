@@ -1,0 +1,210 @@
+   
+    * {
+        margin: 0;
+        padding: 0;
+        font-size: inherit;
+        font-family: inherit;
+        font-family: Verdana, Ariel, Geneva, sans-serif;
+    }
+    
+    body {
+        margin: 50px 0px;
+        padding: 0px;
+        text-align: center;
+        
+    }
+    
+    div#wrapper {
+        margin:0px auto;
+        text-align:left;
+        padding:15px;
+        border:1px dashed #333;
+        width: 960px;
+    }
+    
+
+    h1.header {
+        float:left;
+    }
+    h3.header {
+        float:left;
+        clear: both;
+    }
+    h2 {
+        float: left;      
+    }
+    h4.header {
+        float:left;
+        clear:both;
+        margin-left:20px;
+    }
+    ul {
+        list-style-image: none;
+        list-style-type: none;
+        margin: 0px;
+        padding: 0px;
+    }
+    ul.permission-list {
+        clear:both;
+        margin-left: 25px;
+    }
+    
+    ul#nav-container {
+        
+        height: 50px;
+        border: 1px solid black;        
+    }
+    
+    ul.nav-items-list {
+        border: 1px solid black;
+        padding: 3px;
+        background-color: #BC6060;
+        opacity : .9;
+    }
+    
+    div#display-container {
+        
+        height: 500px;
+        border: 1px solid black;
+        
+    }
+    
+    li.tab {
+        list-style-image: none;
+        list-style-type: none;
+        width:130px;
+        height: 50px;
+        float:left;
+        margin: 0 5px;
+       
+        
+    }
+    
+    li.resource {
+        cursor: pointer;
+        clear: both;
+    }
+    
+    div#overview-container {
+        width: 308px;
+        height: 500px;
+        border: 1px dotted blue;
+        margin: 3px;
+        float:left;
+    }
+
+    div.po-group {
+        clear:both;
+        
+        
+    }
+
+    div#edit-container {
+        width: 628px;
+        height: 500px;
+        border: 1px dotted blue;
+        margin: 3px;
+        float: right;
+    }
+    
+    div#predicates-container {
+        width: 414px;
+        float:left;
+        height: 500px;
+        border: 1px dashed red;
+    }
+    
+    div#object-edit-container {
+        width: 204px;
+        float: right;
+        height: 500px;
+        border: 1px dashed red;
+    }
+    
+    div.header {
+        height: 50px;
+        border: 1px solid black;
+        
+    }
+
+    .po-label {
+        width: 200px;
+        display: inline-block;
+
+    }
+
+    p.po-add, p.po-remove {
+        cursor: pointer;
+    }
+
+    .po-add, .po-remove {
+        width: 100px;
+        display: inline-block;
+        font-size: 12px;        
+    }
+
+    
+    p.new {
+        font-size:10px;
+        float:right;
+        cursor:pointer;        
+    }
+    
+    p#subject-desc {
+        clear:both;
+        float:left;
+    }
+    
+    p#basicsButton {
+        font-size:12px;
+        cursor:pointer;
+        float: right;
+    }
+    
+    p.editGroup {
+        cursor: pointer;
+        float: right;
+        font-size:10px;
+    }
+    
+    p.actionObject {
+        margin-left: 5px;
+        cursor: pointer;
+        font-size: 12px;
+        float: right;
+        clear: right;
+    }
+    
+    div#newDialog div.ui-dialog-titlebar {
+        background-color: #BC6060;
+        
+    }
+    div.ui-widget-header {
+        background: none;
+        background-color: #BC6060;
+        
+    }
+    div.field-wrapper {
+		clear: both;
+	}
+    
+    div#tags-container {
+        border:1px solid black;
+        padding: 5px 0 5px 0;
+        font-size: 10px;
+    }
+    li.tag {
+        display: inline;
+        cursor:pointer;
+        padding: 0 2px 0 2px;
+    }
+    
+    button#subject-done {
+        float:right;
+        
+    }
+	
+	textarea {
+		width: 150px;
+	
+	}
