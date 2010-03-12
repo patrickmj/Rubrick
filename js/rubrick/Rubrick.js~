@@ -5,11 +5,40 @@ String.prototype.stripSlash = function() {
 	return this;
 }
 
+var manifest = {
+	firstRunPage : "<p>Thanks for giving Rubrick a try. There is a beginner's guide to help you get started, and lots more on the project site.</p>",
+	settings: [
+
+		{
+		  name: "notifications",
+		  type: 'group',
+		  label: "Notification Settings",
+		  settings: [
+						{name: 'newSubmissions', type:'boolean', label: "Notify me about new submissions to my dropboxes"} ,
+						{name: 'newRecordings', type:'boolean', label: "Notify me about new recordings my dropboxes"} ,
+						{name: 'newGroupRequests', type:'boolean', label: "Notify me about new requests to join my groups"} ,			
+						{ name: "notifyOnFFstart",
+						  type: 'boolean',
+						  label: "Show Notifications when you start Firefox?",
+						  trueLabel: "Yes",
+						  falseLabel: "No"
+						}
+					]
+		},
+
+	]
+
+
+};
+
+
+
+jetpack.future.import("storage.settings");  
 jetpack.future.import('slideBar');
 
 Rubrick = {
-    serverBase: 'http://code.rubrick-jetpack.org/',
-//	serverBase: 'http://localhost/testJS/jetpacks/rubrick/',  
+//    serverBase: 'http://code.rubrick-jetpack.org/',
+	serverBase: 'http://localhost/testJS/jetpacks/rubrick/',  
     icon: 'http://code.rubrick-jetpack.org/images/rubrick.png',
     currUserURI : false , 
 	currContextURI : null , 
@@ -33,6 +62,7 @@ Rubrick = {
 
 		if(jetpack.tabs.focused.url.stripSlash() == Rubrick.serverBase + 'rubricMaker.php') {
 			$('#submitButton', Rubrick.focusedTab.contentDocument).click(Rubrick.handleRubricCreate);
+			$('#createContextDone', Rubrick.focusedTab.contentDocument).click(Rubrick.postContext);
 		}
 
 		
@@ -80,6 +110,11 @@ Rubrick = {
 		Rubrick.getAvailableContexts();
 		Rubrick.currContextURI = event.target.uri;
 		$(event.target).addClass('focused');
+		if(Rubrick.util.hasPermission('submitItems')) {
+			$('#submitPane', Rubrick.slideWidget.contentDocument).show();
+		} else {
+			$('#submitPane', Rubrick.slideWidget.contentDocument).hide();
+		}
 		Rubrick.displayContextRubrics();
 	},
 
@@ -215,8 +250,20 @@ Rubrick = {
 		);
 	},
 
+	postContext: function() {
 
-	sendRecording: function() {
+        var newName = $('#newContextName', jetpack.tabs.focused.contentDocument).val();
+        var newDesc = $('#newContextDesc', jetpack.tabs.focused.contentDocument).val();
+		$.post(Rubrick.serverBase + "createContext.php", 
+			{ label: newName,
+			  desc: newDesc 
+			},
+			Rubrick.postContextCB 
+		);
+
+	},
+
+	postRecording: function() {
 //ARC2 doesn't seem to like it if you hit send many times quickly, so block.
 //doing it async led to a really bad user experience
 		if(Rubrick.blockPost) {
@@ -234,11 +281,27 @@ Rubrick = {
 				page : Rubrick.currRecording.page , 
 				'lineValues[]' : Rubrick.currRecording.recordedLineValues 				
 			},
-			Rubrick.sendRecordingCallback
+			Rubrick.postRecordingCallback
+		);
+
+	},
+
+	postSubmission: function() {
+		var noteText = $('#submissionNoteArea', Rubrick.slideWidget.contentDocument).val();
+		var pageURL = jetpack.tabs.focused.url.stripSlash();
+
+		$.post(Rubrick.serverBase + 'postSubmission.php' ,
+			{creator : Rubrick.currUserURI ,
+			 context : Rubrick.currContextURI,
+			 page : pageURL ,
+			 note : noteText
+			},
+			Rubrick.postSubmissionCB
 		);
 
 
 	},
+
 /* AJAX Callbacks -- GETing */
 
 	checkLoggedInCB: function(data) {
@@ -386,11 +449,35 @@ Rubrick = {
 	},
 
 
-	sendRecordingCallback: function(data) {		
+	postRecordingCallback: function(data) {		
 		Rubrick.blockPost = false;
 		data = Rubrick.util.checkObject(data);
 		Rubrick.notify(data.message);
 		Rubrick.getAvailableContexts();
+	},
+
+	postSubmissionCB: function(data) {
+		var data = Rubrick.util.checkObject(data);
+		Rubrick.notify(data.message);
+	},
+
+	postContextCB: function(data) {
+		var data = Rubrick.util.checkObject(data);
+		if (data.status == 'success') {
+
+			var container = $('#rubric-contexts-container', jetpack.tabs.focused.contentDocument).find('div')[0];
+			var newLI = $('li:last', container );
+			$(newLI).attr('uri', data.uri);
+			Rubrick.notify('newLI: ' + newLI.attr('uri'));
+/*
+            fieldManager.valueToLabelMap[newVal] = data.label;
+            fieldManager.addAllowedValue(newVal);
+            fieldManager.valueToLabelMap[newVal] = data.label;
+            fieldManager.addInput(newVal);
+*/
+ //           $('#createContextContainer', jetpack.tabs.focused.contentDocument).hide();
+
+		}
 	},
 
 	notify: function(message, style) {
@@ -593,8 +680,8 @@ Rubrick = {
 		var styleEl = doc.createElement('link');
 		styleEl.setAttribute('rel', 'stylesheet');
 		styleEl.setAttribute('type', 'text/css');
-	//	styleEl.setAttribute('href', 'http://localhost/testJS/jetpacks/rubrick/css/rubricPane.css');
-	    styleEl.setAttribute('href', 'http://code.rubrick-jetpack.org/css/rubricPane.css');
+		styleEl.setAttribute('href', 'http://localhost/testJS/jetpacks/rubrick/css/rubricPane.css');
+	//    styleEl.setAttribute('href', 'http://code.rubrick-jetpack.org/css/rubricPane.css');
 		doc.getElementsByTagName('head')[0].appendChild(styleEl);
 	
 
@@ -621,7 +708,7 @@ Rubrick = {
 		if(Rubrick.currUserURI && Rubrick.util.hasPermission('record')) {
 			var sendButton = slidebarDoc.createElement('a');
 			$(sendButton).text('Send');
-			$(sendButton).click(Rubrick.sendRecording);
+			$(sendButton).click(Rubrick.postRecording);
 			$(sendButton).addClass('action');
 			$(rActionsDiv).append(sendButton);
 		}
@@ -747,8 +834,6 @@ Rubrick = {
 		$(totalContainer).addClass('total');
 		$(statsContainer).append(totalContainer);
 
-
-
 		$(infoContainer).append(graphContainer);
 		$(infoContainer).append(statsContainer);
 		$(lineValContainer).append(infoContainer);
@@ -812,7 +897,8 @@ jetpack.statusBar.append(
 jetpack.slideBar.append(
     {   width: 260, 
 		persist: false, 
-        html: ' <div class="slideBarPane" id="login"> <div class="slideBarPaneHeader"> <h2 class="user">Login/Register</h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <ul id="loginOps"> <li id="loginLink" class="focused"> <a>Login</a> </li> <li class="hidden" id="logoutLink"> <a>Logout</a> </li> <li id="createLink"> <a>New account</a> </li> </ul> <div class="clear"></div> <div id="loginInfo" class="hidden">Logged in as:<span id="displayUserName"></span></div> <div id="loginForm"> <p>Username: <input id="nick-login" type="text" size="15"></input></p> <p>Password: <input id="pwd-login" type="password" size="15"></input></p> <a id="loginGo">Go</a> </div> <div id="register" class="hidden"> <p>Username: <input id="nick" type="text" size="15"></input></p> <p>Email: <input id="email" type="text" size="15"></input></p> <p>Password: <input id="pwd" type="password" size="15"></input></p> <a id="registerLink">Go</a> </div> </div> </div> <div class="slideBarPane"> <div class="slideBarPaneHeader"> <h2 class="dropbox">Select Dropbox</h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <ul class="contextList" id="contextSelect"> </ul> <div class="contextRubrics"><h3>Rubrics</h3> <ul id="contextRubricsContainer"> </ul> </div>  </div> </div> <div class="slideBarPane" style="display:none;"> <div class="slideBarPaneHeader"> <h2 class="rubrick">Select Rubric</h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <ul class="rubricList" id="rubricSelect"> </ul> </div> </div> <div class="slideBarPane" id="selectedRubric"> <div class="slideBarPaneHeader"> <h2 class="rubricName"> </h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <div id="rubricMetaContainer"> <p class="rubricDesc"></p> <h3>Rubric Lines </h3> <ul class="rubricLineList"> </ul> </div> </div> </div> <div class="slideBarPane hidden" id="recordings"> <div class="slideBarPaneHeader"> <h2 class="rubrick"> Records </h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <ul class="rubricLineList"> <li class="recording"> <a>Patrick</a> </li> <li class="rubricLineName"> <a>Martha</a> </li> <li class="rubricLineName"> <a>Jerry</a> </li> <li class="rubricLineName"> <a>Andy</a> </li> </ul> </div> </div><div class="slideBarPane" id="createRubricLink"><div class="slideBarPaneHeader"><h2 class="rubricName"><a target="_blank" href="http://code.rubrick-jetpack.org/rubricMaker.php">Create Rubric</a></h2></div></div>',
+
+        html: '  <div class="slideBarPane" id="login">  <div class="slideBarPaneHeader">  <h2 class="user">Login/Register</h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <ul id="loginOps">    <li id="loginLink" class="focused">    <a>Login</a>    </li>    <li class="hidden" id="logoutLink">    <a>Logout</a>    </li>    <li id="createLink">    <a>New account</a>    </li>  </ul>  <div class="clear"></div>  <div id="loginInfo" class="hidden">Logged in as:<span id="displayUserName"></span></div>  <div id="loginForm">    <p>Username: <input id="nick-login" type="text" size="15"></input></p>    <p>Password: <input id="pwd-login" type="password" size="15"></input></p>    <a id="loginGo">Go</a>  </div>  <div id="register" class="hidden">    <p>Username: <input id="nick" type="text" size="15"></input></p>    <p>Email: <input id="email" type="text" size="15"></input></p>    <p>Password: <input id="pwd" type="password" size="15"></input></p>    <a id="registerLink">Go</a>  </div>  </div>  </div>  <div class="slideBarPane">  <div class="slideBarPaneHeader">  <h2 class="dropbox">Select Dropbox</h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <ul class="contextList" id="contextSelect"> </ul>  <div class="contextRubrics">    <h3>Rubrics</h3>    <ul id="contextRubricsContainer"> </ul>  </div>  </div>  </div>  <div class="slideBarPane" style="display:none;">  <div class="slideBarPaneHeader">  <h2 class="rubrick">Select Rubric</h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <ul class="rubricList" id="rubricSelect"> </ul>  </div>  </div>  <div class="slideBarPane" id="selectedRubric">  <div class="slideBarPaneHeader">  <h2 class="rubricName"> </h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <div id="rubricMetaContainer">    <p class="rubricDesc"></p>    <h3>Rubric Lines </h3>    <ul class="rubricLineList"> </ul>  </div>  </div>  </div>  <div class="slideBarPane" id="submitPane">  <div class="slideBarPaneHeader">  <h2 class="submission">Submit</h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <div id="submissionInfo">    <p>Add a note (optional)</p>    <textarea id="submissionNoteArea" rows="5" ></textarea><br/>    <a id="submitSubmission">Submit to <span id="submissionContextName">(Curr Context Name)</span></a>  </div>  </div>  </div>  <div class="slideBarPane hidden" id="recordings">  <div class="slideBarPaneHeader">  <h2 class="rubrick"> Records </h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <ul class="rubricLineList">    <li class="recording">    <a>Patrick</a>    </li>    <li class="rubricLineName">    <a>Martha</a>    </li>    <li class="rubricLineName">    <a>Jerry</a>    </li>    <li class="rubricLineName">    <a>Andy</a>    </li>  </ul>  </div>  </div>  <div class="slideBarPane" id="createRubricLink">  <div class="slideBarPaneHeader">  <h2>    <a target="_blank" href="http://localhost/testJS/jetpacks/rubrick/rubricMaker.php">Create    Rubric</a>  </h2>  </div>  </div>',
 
         icon: Rubrick.icon,
            
@@ -820,7 +906,8 @@ jetpack.slideBar.append(
             var styleEl = widget.contentDocument.createElement('link');
             styleEl.setAttribute('rel', 'stylesheet');
             styleEl.setAttribute('type', 'text/css');
-            styleEl.setAttribute('href', 'http://code.rubrick-jetpack.org/css/slidebar.css');
+            styleEl.setAttribute('href', 'http://localhost/testJS/jetpacks/rubrick/css/slidebar.css');
+//            styleEl.setAttribute('href', 'http://code.rubrick-jetpack.org/css/slidebar.css');
             widget.contentDocument.getElementsByTagName('head')[0].appendChild(styleEl);        
             Rubrick.slideWidget = widget;
 			$('.min', widget.contentDocument).click(Rubrick.minimizePane);
@@ -830,6 +917,8 @@ jetpack.slideBar.append(
 			$('#loginLink', widget.contentDocument).click(Rubrick.showLogin);
 			$('#registerLink', widget.contentDocument).click(Rubrick.register);
 			$('#loginGo', widget.contentDocument).click(Rubrick.login);
+			$('#submitSubmission', widget.contentDocument).click(Rubrick.postSubmission);
+			$('#submitPane', Rubrick.slideWidget.contentDocument).hide();
 			Rubrick.getAvailableContexts();
 			Rubrick.checkLoggedIn();
 

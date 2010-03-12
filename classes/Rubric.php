@@ -1,98 +1,121 @@
 <?php
 
+require_once('RubrickBuilder.php');
 require_once('RubricLine.php');
 require_once('RubricLineValue.php');
 
-ARC2::inc('PMJ_ResourceGraphPlugin');
+/*
+ *	class:	Rubric
+ *	
+ *
+*/
 
-class Rubric {
-    public $lines = array();
-    public $graph ;
-	public $uri = false;
+class Rubric extends RubrickBuilder
+{
 
-    public function __construct($jsonObj) {
-		global $graphConfig;
+	public $typeURI = 'r:Rubric';
+
+	/**
+	 * buildAddGraph
+	 * @param  
+	 * @return
+	*/
+
+	public function buildAddGraph()
+	{
+
+		$this->_addCreatorToThisRes();
+		$this->_addCreatedToThisRes();
+		$this->_addLiteralsAndURIsToThisRes();
 		
+		if( isset($this->postData->rubricMeta) )  {
+			$this->buildMeta();	
+		}
+		
+		if ( isset($this->postData->rubricLines) ) {
+			$this->buildLines();
+			$this->addRevRelTriples('add');			
+		}
 
-		$res = ARC2::getComponent('PMJ_ResourcePlusPlugin', $graphConfig);
+		$this->addResourceToGraph($this->res, 'add');
+	}
 
-		$this->name = urldecode($jsonObj->rName);
-/* I'm making all rubric submissions final, so always mint a new URI. new rubrics can be created from old one's, though */
-		$this->mintURI();
+	/**
+	 * buildLines
+	 * @return
+	*/
 
-		$res->setURI($this->uri);
-		$res->addPropValue('rdf:type', 'r:Rubric', 'uri');
-		$res->addPropValue('r:name', $this->name, 'literal' );
-		$res->addPropValue('sioc:has_creator', $_SESSION['userURI'], 'uri');
-		$res->addPropValue('dcterms:created', date('c'), 'literal', 'xsd:dateTime')	;
+	public function buildLines()
+	{
+		foreach ($this->postData->rubricLines as $rubricLineObj) {					
+            $newLine = new RubricLine(false, $rubricLineObj);
+			$newLine->revResourceURI = $this->uri;
+			$newLine->buildAddGraph();
+			$this->aggregates[] = $newLine;
+        }
+	}
 
+	/**
+	 * buildMeta	
 
-	
+	 * @return
+	*/
 
-		foreach ($jsonObj->rubricMeta as $valObj) {
+	public function buildMeta()
+	{
+		
+		foreach ($this->postData->rubricMeta as $valObj) {
 			foreach($valObj as $key=>$valArray) {
 				switch($key) {
+				
+				case 'rName':
+					$this->res->addPropValue('sioc:name', urldecode($valArray[0]), 'literal' );	
 					
-				case 'rDesc':
-					$res->addPropValue('r:description', urldecode($valArray[0]), 'literal' );	
 				break;
 				
+							
+				case 'rDesc':
+					$this->res->addPropValue('r:description', urldecode($valArray[0]), 'literal' );	
+				break;
+		
 				case 'rTags':
-					$tagsGraph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $graphConfig);
 
-                    foreach($valArray  as $tag) {
-//							$tagsGraph->merge($this->processTag(urldecode($tag)));
-                    }
+					//using richard newman's tagging ontology, which distinguishes between
+					//Tagging and Tag so that dates and names can be associated with a Tag	
+				
+					$newTagging = new Tagging(false, $valArray);
+					$newTagging->revResourceURI = $this->uri;
+					$newTagging->buildAddGraph();
+					$this->aggregates[] = $newTagging;
+
+
+
 				break;
 				
 				case 'rPublic' :
-					$res->addPropValue('r:isPublic', (string) $valArray[0], 'literal');
+					$this->res->addPropValue('r:isPublic', (string) $valArray[0], 'literal');
 				break;
 
-
+				case 'rContexts' :
+					foreach($valArray as $contextURI) {
+						$contextRes = $this->_getEmptyResource();
+						$contextRes->setURI($contextURI);
+						$contextRes->addPropValue('r:hasRubric', $this->uri, 'uri');
+						$this->addResourceToGraph($contextRes, 'add');
+					}
+					
+				break;
+			
 				default:
 				
 				break;
 				}
 			}
-		}
+		}		
+		$this->addResourceToGraph($this->res, 'add');
+	}
 
-        foreach ($jsonObj->rubricLines as $rubricLineObj) {
-            $newLine = new RubricLine($rubricLineObj);
-			$this->lines[] = $newLine;
-			$res->addPropValue('r:hasLine' , $newLine->uri , 'uri');
-
-        }
-
-		$this->graph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $graphConfig);
-		$this->graph->addResource($res);		
-		/* Add the context info */
-
-//TODO: build this into the UI
-
-		foreach($jsonObj->rubricMeta[4]->rContexts as $cURI) {
-			$contextRes = ARC2::getComponent('PMJ_ResourcePlusPlugin', $graphConfig);
-			$contextRes->setURI($cURI);
-			$contextRes->addPropValue('r:hasRubric', $this->uri, 'uri');
-			$this->graph->addResource($contextRes);
-		}
-	
-    }
-
-    public function mintURI() {
-		//TODO: handle case when URI is already known!
-
-		$this->uri = 'http://data.rubrick-jetpack.org/Rubrics/' . sha1($_SESSION['userURI'] . time() );
-		return $this->uri;    
-    }
-    
-    public function buildGraph() {
-    	foreach($this->lines as $line) {
-			$this->graph->mergeResourceGraph($line->graph);
-		}
-    }
 }
-
 
 
 

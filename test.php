@@ -1,51 +1,27 @@
 <?php
-
 include('config.php');
-include(CLASSES_DIR . 'RubricSelector.php');
-include(CLASSES_DIR . 'RubricLineSelector.php');
-include(CLASSES_DIR . 'RubricLineValueSelector.php');
+include_once('checkLogin.php');
+include(ARC_DIR . 'ARC2.php');
+include(CLASSES_DIR . 'Updater.php');
+
 
 
 header('Content-type: application/json');
 
-$returnDataObj = new StdClass();
-
-//$rSel = new RubricSelector(array('pageURL'=> 'http://localhost/testJS/jetpacks/rubrick/testPage.html'));
-
-$arr = array('uri'=> 'http://data.rubrick-jetpack.org/Rubrics/7ec851c1eec48c3fb0bbd0863b201a90501368c6', 'by'=>'byURI');
-$rSel = new RubricSelector($arr);
-
-
-$rSel->doQuery();
-$rSel->processResultSet();
-
-$returnDataObj->rObj = $rSel->preJSONObj;
-
-$lineURIs = $rSel->extractBinding('rLineURI');
-
-$lineValURIs = array();
-
-foreach($lineURIs as $rLineURI) {
-	$rLineSel = new RubricLineSelector(array('uri'=>$rLineURI));
-	$rLineSel->doQuery();
-	$rLineSel->processResultSet();
-	$returnDataObj->rLines->$rLineURI = $rLineSel->preJSONObj; 
-	$lineValURIs = array_merge($lineValURIs, $rLineSel->extractBinding('rLValueURI'));
-}
+$store = ARC2::getStore($config);
+$POST['jsonStr'] = '{"new":"{}","old":"{\"http://data.rubrick-jetpack.org/Rubrics/0280bce1098ee66c35f8027d3a200b9f9d6cc90a\":{\"http://www.holygoat.co.uk/owl/redwood/0.1/tags/tag\":[{\"value\":\"http://data.rubrick-jetpack.org/Tag/tagged_rubric\",\"type\":\"uri\"},{\"value\":\"http://data.rubrick-jetpack.org/Tag/woot_tag_2\",\"type\":\"uri\"}]}}"}';
+$postObj = json_decode($POST['jsonStr']);
+/*
+$jsonObj = json_decode($jsonStr);
+$newIndex = json_decode($jsonObj->new, true);
+//print_r($newIndex);
+$testT = new Tagging(false, array('properties'=>array('newTagGraph' => $newIndex)) );
+$testT->buildUpdateGraph();
+echo json_encode($testT->updateGraph->toRDFJSON(true) );
+*/
 
 
-foreach($lineValURIs as $lineValURI) {
-	$rlvSel = new RubricLineValueSelector(array('uri'=>$lineValURI));
-	$rlvSel->doQuery();
-	$rlvSel->processResultSet();
-	$returnDataObj->rLineVals->$lineValURI = $rlvSel->preJSONObj;
-
-}
-
-//echo $rSel->getJSON();
-echo json_encode($returnDataObj) ;
-
-
-
-
+$u = new Updater(false, array('post'=>$postObj));
+$u->buildDeleteGraph();
+echo json_encode($u->deleteGraph->toRDFJSON(true));
 ?>

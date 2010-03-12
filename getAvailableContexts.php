@@ -1,91 +1,89 @@
 <?php
-
 include('config.php');
-include_once('checkLogin.php');
-include(CLASSES_DIR . 'ContextSelector.php');
-include(CLASSES_DIR . 'RubricSelector.php');
+include('checkLogin.php');
+include(CLASSES_DIR . 'ContextConstructor.php');
+include(CLASSES_DIR . 'RubricConstructor.php');
+include(CLASSES_DIR . 'RecordingConstructor.php');
 include(CLASSES_DIR . 'PermissionsManager.php');
-include(CLASSES_DIR . 'RecordingSelector.php');
+include(CLASSES_DIR . 'ConfirmationUserGroupConstructor.php');
+include(CLASSES_DIR . 'NetworkConstructor.php');
+include(CLASSES_DIR . 'TagCollector.php');
 
 header('Content-type: application/json');
-
 
 
 $obj = new stdClass();
 $pm = new PermissionsManager();
 $pm->doQueries();
-
 $obj->perms = $pm->perms;
+
+
+
 $contextsForRecordings = array();
 $contextsForSubmissions = array();
-
-
-$contexts = new stdClass();
 $rubricURIs = array();
+$bigGraph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $graphConfig);
 foreach($pm->perms as $context=>$perms) {
-	$cSelector = new ContextSelector(array('uri'=>$context, 'by'=>'byURI'));
-	$cSelector->setQuery();
-	$cSelector->doQuery();
-	$cSelector->processResultSet();
-	$contexts->$context = $cSelector->preJSONObj;
 
-	$rubricURIs = array_merge($rubricURIs, $cSelector->extractBinding('rURI'));
+	$cConst = new ContextConstructor(array('uri'=>$context, 'by'=>'byURI'));
+	$bigGraph->mergeResourceGraph($cConst->graph);
 
-	if( in_array('viewRecordings', $perms)) {
-		$contextsForRecordings[] = $context;
+	$rubricConst = new RubricConstructor(array('contextURI'=>$context, 'by'=>'byContextURI'));
+	$bigGraph->mergeResourceGraph($rubricConst->graph);
+
+
+	if( $pm->hasPermission($context, 'r:viewRecordings') ) {
+		$recConst = new RecordingConstructor(array('cURI'=>$context, 'by'=>'byContext'));
+		$bigGraph->mergeResourceGraph($recConst->graph);
 	}
+
 
 	if( in_array('submit', $perms)) {
-		$contextsForSubmissions[] = $context;
+		//gather up submissions
 	}
+	
 }
-$obj->contexts = $contexts;
+
+$myConfUserGroups = new ConfirmationUserGroupConstructor(array('by'=>'byCreatorURI' , 'creatorURI'=>$_SESSION['userURI']));
+$myNetworks = new NetworkConstructor(array('by'=>'byCreatorURI' , 'creatorURI'=>$_SESSION['userURI']));
+$bigGraph->mergeResourceGraph($myConfUserGroups->graph);
+$bigGraph->mergeResourceGraph($myNetworks->graph);
+
+$myRubrics = new RubricConstructor(array('creatorURI'=>$_SESSION['userURI'], 'by'=>'byCreatorURI') );
+$bigGraph->mergeResourceGraph($myRubrics->graph);
+
+$users = $bigGraph->getResourcesGraphByType('sioc:User');
 
 
-
-$rubricsObj = new stdClass();
-foreach($rubricURIs as $rubricURI) {
-	if($rubricURI != '') {
-		$rubricSel = new RubricSelector(array('by'=>'byURI'));
-		$rubricSel->uri = $rubricURI;
-		$rubricSel->setQuery();
-		$rubricSel->doQuery();
-		$rubricSel->processResultSet();
-		$rubricsObj->$rubricURI =  $rubricSel->preJSONObj;
-
-	}
-
-}
-$obj->rubrics = $rubricsObj;
+$allSubjectURIs = $bigGraph->getResourceURIs();
+$tc = new TagCollector(array('uris'=>$allSubjectURIs));
+$tc->buildTagGraphForAllURIs();
 
 
+$contexts = $bigGraph->getResourcesGraphByType('r:Context');
+$rubrics = $bigGraph->getResourcesGraphByType('r:Rubric');
+$recordings = $bigGraph->getResourcesGraphByType('r:Recording');
+$rContext = "r:Context";
+$rRubric = "r:Rubric";
+$rRecording = "r:Recording";
+$rConfirmationUserGroup = "r:ConfirmationUserGroup";
+$rNetwork = "r:Network";
+$taggingTag = "tagging:Tag";
+$siocUser = "sioc:User";
 
-$rSel = new RecordingSelector(array('by'=>'byContext'));
-foreach($contextsForRecordings as $context) {
-	$rSel->ecURI = $context;
-	$rSel->setQuery();
-	$rSel->doQuery();
-	$rSel->processResultSet();
-}
-$obj->recordings = $rSel->preJSONObj;
+$obj->$taggingTag = $tc->graph->toRDFJSON(true);
+$tc->setTagURIsFromGraph();
+$obj->tagURIMap = $tc->buildTagURIMap();
 
-/*
 
-$subSel = new SubmissionSelector(array('by'=>'byContext'));
-foreach($contextsForSubmissions as $context) {
-	$subSel->ecURI = $context;
-	$subSel->setQuery();
-	$subSel->doQuery();
-	$subSel->processResultSet();
-}
-$obj->submissions = $rSel->preJSONObj;
+$obj->$siocUser = $users->toRDFJSON(true);
+$obj->$rNetwork = $myNetworks->toRDFJSON(true);
 
-*/
+$obj->$rConfirmationUserGroup = $myConfUserGroups->toRDFJSON(true);
+$obj->$rContext = $contexts->toRDFJSON(true);
+$obj->$rRubric = $rubrics->toRDFJSON(true);
+$obj->$rRecording = $recordings->toRDFJSON(true);
 
-$obj->message = "ok";
 echo json_encode($obj);
-
-
-
 
 ?>

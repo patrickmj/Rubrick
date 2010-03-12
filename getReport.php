@@ -11,8 +11,8 @@ $contextURI = $_GET['contextURI'];
 $pm = new PermissionsManager();
 $pm->doQueries();
 
-if(isset($pm->perms[$contextURI]) && in_array('getReport', $pm->perms[$contextURI])) {
-
+//if(isset($pm->perms[$contextURI]) && in_array('getReport', $pm->perms[$contextURI])) {
+if($pm->hasPermission($contextURI, 'r:getReport')) {
 	header('Content-type: text/csv; charset=utf-8');
 	$reporter = new ContextReporter($contextURI);
 	$reporter->doQuery();

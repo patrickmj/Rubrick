@@ -63,10 +63,13 @@ class PMJ_ResourceGraphPlugin extends ARC2_Class
 		return $ser->getSerializedIndex($index);
 	}
 
-	function toRDFJSON() {
+	function toRDFJSON($asObject = false) {
 
 		$index = $this->toIndex();
 		$ser = ARC2::getRDFJSONSerializer(array('ns' => $this->ns));
+		if($asObject) {
+			return json_decode($ser->getSerializedIndex($index) );
+		}
 		return $ser->getSerializedIndex($index);
 	}
 
@@ -88,6 +91,14 @@ class PMJ_ResourceGraphPlugin extends ARC2_Class
 		return count($this->resources);
 	}
 
+
+	public function getObjectsForResourcePred($rURI, $pURI)
+	{
+		$resource = $this->getResource($rURI);
+		$pURI = $this->expandPName($pURI);
+		
+		return $resource->getFlattenedProps($pURI);
+	}
 
 	/**
 	 * triplesCount
@@ -234,7 +245,14 @@ class PMJ_ResourceGraphPlugin extends ARC2_Class
 
 	}
 
-
+	public function getResourcesGraphByType($type) {
+		$retGraph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $this->ns);
+		$resArray = $this->getResourcesByType($type);
+		foreach ($resArray as $res) {
+			$retGraph->addResource($res);			
+		}
+		return $retGraph;
+	}
 
 	/**
 	 * getResourcesByTypes
@@ -584,6 +602,40 @@ class PMJ_ResourceGraphPlugin extends ARC2_Class
 		}
 
 	
+	}
+	
+	public function getResourceURIs() {
+		$uris = array();
+		foreach ($this->resources as $res) {
+			$uris[] = $res->uri;
+		}
+		return $uris;
+	}
+	
+	public function extractResourceObjectsArrayAroundProp($pURI) {
+		$retArray = array();
+		foreach($this->resources as $res) {
+			if($res->hasProp($pURI)) {
+				$retArray[$res->uri] = $res->getProp($pURI);
+			}
+		}
+		return $retArray;
+	}
+	
+	public function extractGraphAroundProp($pURI) {
+		global $graphConfig;
+		$pURI = $this->expandPName($pURI);
+		$index = array();
+		foreach($this->resources as $res) {
+			if($res->hasProp($pURI)) {
+				$index[$res->uri] = array();
+				
+				$index[$res->uri][$pURI][] = $res->getProp($pURI);
+			}
+		}
+		$retGraph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $graphConfig);
+		$retGraph->mergeIndex($index);
+		return $retGraph;
 	}
 
 }

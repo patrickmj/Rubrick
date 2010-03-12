@@ -18,22 +18,22 @@ class ContextReporter {
 		$this->contextURI = $contextURI;
 		$this->query = "
 
-SELECT DISTINCT ?rName ?pURL ?pTitle ?recorderUserName ?lvDesc  ?lvScore 
+SELECT DISTINCT ?rName ?pURL ?pTitle  ?lvDesc  ?lvScore 
 WHERE  {
 	<$this->contextURI> r:hasRubric ?rubric ; 
+r:hasRubric ?rubric ; 
 	    r:hasRecording ?rec .
-        ?rubric r:name ?rName . 
+        ?rubric sioc:name ?rName . 
 	?rec r:hasLineValue ?lv ;
 		r:hasPage ?pURL ; 
 		 sioc:has_creator ?recCreator . 
 	?lv r:score ?lvScore ;
 		r:description ?lvDesc . 
-	?recCreator sioc:name ?recorderUserName . 
 OPTIONAL {
 	?pURL dc:title ?pTitle . 
+}	
 }
 
-}
 	";
 
 
@@ -78,6 +78,5 @@ OPTIONAL {
 		return $csv;
 	}
 }
-
 
 ?>

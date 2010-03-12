@@ -113,7 +113,7 @@ class PMJ_ResourcePlusPlugin extends ARC2_Resource
 
 	public function getTypes()
 	{
-		return $this->flattenObjects($this->getProps('rdfs:type') );
+		return $this->flattenObjects($this->getProps('rdf:type') );
 	}
 
 
@@ -125,7 +125,7 @@ class PMJ_ResourcePlusPlugin extends ARC2_Resource
 
 	public function hasType($type)
 	{
-		$types = $this->getTypes('rdfs:type');
+		$types = $this->getTypes('rdf:type');
 		return in_array($this->expandPName($type), $types);
 	}
 
@@ -339,6 +339,12 @@ class PMJ_ResourcePlusPlugin extends ARC2_Resource
 		return $g;
 	}
 
+	public function getFirstPropValue($p)
+	{
+		$vals = $this->getFlattenedProps($p);
+		return $vals[0];
+	}
+		
 	
 	public function getFlattenedProps($p)
 	{

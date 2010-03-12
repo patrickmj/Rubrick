@@ -23,14 +23,14 @@ if (!Array.prototype.indexOf)
   };
 }
 
-function extend(child, sup) {
+function Rubrick.util.extend(child, sup) {
   for (var property in sup.prototype) {
     if (typeof child.prototype[property] == "undefined")
       child.prototype[property] = sup.prototype[property];
   }
 }
 
- function stopEvent(e) {
+ function Rubrick.ui.stopEvent(e) {
     if (!e) var e = window.event;
 
 	//e.cancelBubble is supported by IE - this will kill the bubbling process.
@@ -51,7 +51,7 @@ function extend(child, sup) {
 
 
 
-function Field(fieldName, configObj) {
+function Rubrick.ui.Field(fieldName, configObj) {
 
 	this.inputs = [];
 	this.values = [];
@@ -73,7 +73,7 @@ function Field(fieldName, configObj) {
 
 }
 
-Field.prototype = 	{
+Rubrick.ui.Field.prototype = 	{
 
 	recordId: null,
 	container: null, 
@@ -150,7 +150,7 @@ Field.prototype = 	{
 
 
 	postProcessClick: function() {
-		RowsManager.setJSON();
+		Rubrick.ui.RowsManager.setJSON();
 	},
 
 
@@ -238,9 +238,9 @@ Field.prototype = 	{
 
 
 
-function TextField(fieldName, configObj) {
+function Rubrick.ui.TextField(fieldName, configObj) {
 
-	Field.apply(this, arguments);
+	Rubrick.ui.Field.apply(this, arguments);
 
 	this.container.setAttribute('onkeypress', 'this.manager.processKeyPress(event)');
 	this.init();
@@ -249,7 +249,7 @@ function TextField(fieldName, configObj) {
 	this.updateDisplayContainer();
 }
 
-TextField.prototype = {
+Rubrick.ui.TextField.prototype = {
 
 	editContainer: null,
 	isEditing: false, 
@@ -426,7 +426,7 @@ TextField.prototype = {
 
 }
 
-extend(TextField, Field);
+Rubrick.ui.extend(Rubrick.ui.TextField, Rubrick.ui.Field);
 
 
 
@@ -438,11 +438,11 @@ extend(TextField, Field);
 
 function ShortTextField(fieldName, configObj) {
 
-	TextField.apply(this, arguments);
+	Rubrick.ui.TextField.apply(this, arguments);
 
 }
 
-ShortTextField.prototype = { 
+Rubrick.ui.ShortTextField.prototype = { 
 
 
 	inputs: [] , 
@@ -471,7 +471,7 @@ ShortTextField.prototype = {
 
 }
 
-extend(ShortTextField, TextField);
+Rubrick.ui.extend(Rubrick.ui.ShortTextField, Rubrick.ui.TextField);
 
 
 
@@ -480,14 +480,14 @@ extend(ShortTextField, TextField);
 */
 
 
-function LongTextField(fieldName, configObj) {
+function Rubrick.ui.LongTextField(fieldName, configObj) {
 
-	TextField.apply(this, arguments);
+	Rubrick.ui.TextField.apply(this, arguments);
 
 }
 
 
-LongTextField.prototype = 	{ 
+Rubrick.ui.LongTextField.prototype = 	{ 
 
 	inputs: [] , 
 	values: [],
@@ -500,7 +500,7 @@ LongTextField.prototype = 	{
 			input.setAttribute('onclick', "stopEvent(event); return false;" );
 		}
 
-		TextField.prototype.addInput.call(this, input);
+		Rubrick.ui.TextField.prototype.addInput.call(this, input);
 	},
 
 	parseValues: function() {
@@ -512,7 +512,7 @@ LongTextField.prototype = 	{
 
 }
 
-extend(LongTextField, TextField);
+Rubrick.ui.extend(Rubrick.ui.LongTextField, Rubrick.ui.TextField);
 
 
 
@@ -520,11 +520,11 @@ extend(LongTextField, TextField);
 	EnumerationField
 */
 
-function EnumerationField(fieldName, configObj) {
+function Rubrick.ui.EnumerationField(fieldName, configObj) {
 	//this.allowedValues = [];
 	this.values = [] ; 
 
-	Field.apply(this, arguments);
+	Rubrick.ui.Field.apply(this, arguments);
 
 	this.displayAllowedInputs();
 	this.init();
@@ -534,7 +534,7 @@ function EnumerationField(fieldName, configObj) {
 }
 
 
-EnumerationField.prototype = { 
+Rubrick.ui.EnumerationField.prototype = { 
 	maxSelected : false,
 	minSelected : 0,
 	allowedValues: [], // TODO: figure out allowedValues on prototype
@@ -544,7 +544,7 @@ EnumerationField.prototype = {
 
 
 	addValue: function(val) {
-		Field.prototype.addValue.call(this, val);
+		Rubrick.ui.Field.prototype.addValue.call(this, val);
 		for(var i=0; i< this.inputs.length; i++) {
 			if(this.inputs[i].val == val) {
 				this.inputs[i].selected = true ;
@@ -554,7 +554,7 @@ EnumerationField.prototype = {
 	},
 
 	removeValue: function(val) {
-		Field.prototype.removeValue.call(this, val);
+		Rubrick.ui.Field.prototype.removeValue.call(this, val);
 		for(var i=0; i< this.inputs.length; i++) {
 			if(this.inputs[i].val == val) this.inputs[i].selected = false ;
 		}
@@ -580,9 +580,10 @@ EnumerationField.prototype = {
 		input = document.createElement('li');
 		input.innerHTML = label;
 		input.val = value;
+		$(input).attr('uri', value);
 		input.selected = false;
 	
-		Field.prototype.addInput.call(this, input);
+		Rubrick.ui.Field.prototype.addInput.call(this, input);
 		this.displayContainer.appendChild(input);
 	},
 
@@ -686,7 +687,7 @@ EnumerationField.prototype = {
 
 }
 
-extend(EnumerationField, Field);
+Rubrick.ui.extend(Rubrick.ui.EnumerationField, Rubrick.ui.Field);
 
 
 /*
@@ -694,13 +695,13 @@ extend(EnumerationField, Field);
 */
 
 
-function SingleEnumerationField(fieldName, configObj) {
+function Rubrick.ui.SingleEnumerationField(fieldName, configObj) {
 
-	EnumerationField.apply(this, arguments);
+	Rubrick.ui.EnumerationField.apply(this, arguments);
 }
 
 
-SingleEnumerationField.prototype = { 
+Rubrick.ui.SingleEnumerationField.prototype = { 
 	maxSelected : 1,
 	minSelected : 0, 
 
@@ -721,23 +722,23 @@ SingleEnumerationField.prototype = {
 
 	postProcessClick: function() {
 		this.updateDisplayContainer();
-		Field.prototype.postProcessClick.call(this);
+		Rubrick.ui.Field.prototype.postProcessClick.call(this);
 	}
 }
 
-extend(SingleEnumerationField, EnumerationField);
+Rubrick.ui.extend(Rubrick.ui.SingleEnumerationField, Rubrick.ui.EnumerationField);
 
 /*
 	BooleanEnumerationField
 */
 
-function BooleanEnumerationField(fieldName, configObj) {
+function Rubrick.ui.BooleanEnumerationField(fieldName, configObj) {
 
 	SingleEnumerationField.apply(this, arguments);
 //	this.displayAllowedInputs();
 }
 
-BooleanEnumerationField.prototype = {
+Rubrick.ui.BooleanEnumerationField.prototype = {
 
 	allowedValues: [ 'true' , 'false' ] ,
 	valueToLabelMap: { 'true' : 'Yes', 'false' : 'No'},
@@ -763,18 +764,18 @@ BooleanEnumerationField.prototype = {
 	
 }
 
-extend(BooleanEnumerationField, SingleEnumerationField);
+Rubrick.ui.extend(Rubrick.ui.BooleanEnumerationField, Rubrick.ui.SingleEnumerationField);
 
 /*
 	OrderedEnumerationField
 */
 
-function OrderedEnumerationField(fieldName, configObj) {
+function Rubrick.ui.OrderedEnumerationField(fieldName, configObj) {
 
-	SingleEnumerationField.apply(this, arguments);
+	Rubrick.ui.SingleEnumerationField.apply(this, arguments);
 }
 
-OrderedEnumerationField.prototype = {
+Rubrick.ui.OrderedEnumerationField.prototype = {
 	
 	displayAllowedInputs: function() {},
 
@@ -783,15 +784,15 @@ OrderedEnumerationField.prototype = {
 		switch (target.action) {
 			case 'inc' :
 				if (  this.allowedValues.indexOf( this.values[0] + 1 ) != -1 ) {				
-					for(var r=0; r<RowsManager.rows.length; r++) {
-						if(RowsManager.rows[r].fields[this.fieldName].values[0] == this.values[0] + 1 ) {
-							RowsManager.rows[r].fields[this.fieldName].values[0]--;
+					for(var r=0; r<Rubrick.ui.RowsManager.rows.length; r++) {
+						if(Rubrick.ui.RowsManager.rows[r].fields[this.fieldName].values[0] == this.values[0] + 1 ) {
+							Rubrick.ui.RowsManager.rows[r].fields[this.fieldName].values[0]--;
 						}
 					}
 					this.values[0]++;
 				} else {
-					for(var r=0; r<RowsManager.rows.length; r++) {
-						RowsManager.rows[r].fields[this.fieldName].values[0]++;
+					for(var r=0; r<Rubrick.ui.RowsManager.rows.length; r++) {
+						Rubrick.ui.RowsManager.rows[r].fields[this.fieldName].values[0]++;
 						this.values[0] = 0;
 					}
 
@@ -801,16 +802,16 @@ OrderedEnumerationField.prototype = {
 			case 'dec' :
 
 				if (  this.allowedValues.indexOf( this.values[0] - 1 ) != -1 ) {
-					for(var r=0; r<RowsManager.rows.length; r++) {
-						if(RowsManager.rows[r].fields[this.fieldName].values[0] == this.values[0] - 1 ) {
-							RowsManager.rows[r].fields[this.fieldName].values[0]++;
+					for(var r=0; r<Rubrick.ui.RowsManager.rows.length; r++) {
+						if(Rubrick.ui.RowsManager.rows[r].fields[this.fieldName].values[0] == this.values[0] - 1 ) {
+							Rubrick.ui.RowsManager.rows[r].fields[this.fieldName].values[0]++;
 						}
 					}
 					this.values[0]--;
 				} else {
-					for(var r=0; r<RowsManager.rows.length; r++) {
-						RowsManager.rows[r].fields[this.fieldName].values[0]--;
-						this.values[0] = RowsManager.rows.length - 1;
+					for(var r=0; r<Rubrick.ui.RowsManager.rows.length; r++) {
+						Rubrick.ui.RowsManager.rows[r].fields[this.fieldName].values[0]--;
+						this.values[0] = Rubrick.ui.RowsManager.rows.length - 1;
 					}
 
 				}
@@ -818,7 +819,7 @@ OrderedEnumerationField.prototype = {
 
 		}
 
-		RowsManager.reorderRows();
+		Rubrick.ui.RowsManager.reorderRows();
 
 	},
 
@@ -854,10 +855,10 @@ OrderedEnumerationField.prototype = {
 
 	setAllowedValues: function() {
 		avs = new Array();
-		for(var i=0; i <= RowsManager.rows.length; i++) {
+		for(var i=0; i <= Rubrick.ui.RowsManager.rows.length; i++) {
 			avs.push(i);
 		}
-		OrderedEnumerationField.prototype.allowedValues = avs;
+		Rubrick.ui.OrderedEnumerationField.prototype.allowedValues = avs;
 	},
 
 	init: function() {
@@ -874,7 +875,7 @@ OrderedEnumerationField.prototype = {
 
 }
 
-extend(OrderedEnumerationField, SingleEnumerationField);
+Rubrick.ui.extend(Rubrick.ui.OrderedEnumerationField, Rubrick.ui.SingleEnumerationField);
 
 
 
@@ -883,12 +884,12 @@ extend(OrderedEnumerationField, SingleEnumerationField);
 	UniqueEnumerationField
 */
 
-function UniqueEnumerationField(fieldName, configObj) {
+function Rubrick.ui.UniqueEnumerationField(fieldName, configObj) {
 
-	SingleEnumerationField.apply(this, arguments);
+	Rubrick.ui.SingleEnumerationField.apply(this, arguments);
 }
 
-UniqueEnumerationField.prototype = {
+Rubrick.ui.UniqueEnumerationField.prototype = {
 	
 
 	isUnique: function() {
@@ -897,20 +898,20 @@ UniqueEnumerationField.prototype = {
 	}
 }
 
-extend(UniqueEnumerationField, SingleEnumerationField);
+Rubrick.ui.extend(Rubrick.ui.UniqueEnumerationField, Rubrick.ui.SingleEnumerationField);
 
 
 
 
-FieldFactory = {
+Rubrick.ui.FieldFactory = {
 
 	classes :  {
-		'LongTextField' : LongTextField , 
-		'ShortTextField' : ShortTextField, 
-		'EnumerationField' : EnumerationField,
-		'SingleEnumerationField' : SingleEnumerationField,
-		'BooleanEnumerationField' : BooleanEnumerationField, 
-		'OrderedEnumerationField' : OrderedEnumerationField
+		'LongTextField' : Rubrick.ui.LongTextField , 
+		'ShortTextField' : Rubrick.ui.ShortTextField, 
+		'EnumerationField' : Rubrick.ui.EnumerationField,
+		'SingleEnumerationField' : Rubrick.ui.SingleEnumerationField,
+		'BooleanEnumerationField' : Rubrick.ui.BooleanEnumerationField, 
+		'OrderedEnumerationField' : Rubrick.ui.OrderedEnumerationField
 	},
 
 	getField: function(fieldClass, fieldLabel, fieldConfigObj) {

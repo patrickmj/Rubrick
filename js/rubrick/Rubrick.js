@@ -5,11 +5,37 @@ String.prototype.stripSlash = function() {
 	return this;
 }
 
+var manifest = {
+firstRunPage : "<p>Thanks for giving Rubrick a try. There is a beginner's guide to help you get started, and lots more on the project site.</p>",
+settings: [
+
+	{
+	  name: "notifications",
+	  type: 'group',
+	  label: "Notification Settings",
+	  settings: [
+					{name: 'newSubmissions', type:'boolean', label: "Notify me about new submissions to my dropboxes"} ,
+					{name: 'newRecordings', type:'boolean', label: "Notify me about new recordings my dropboxes"} ,
+					{name: 'newGroupRequests', type:'boolean', label: "Notify me about new requests to join my groups"} ,			
+					{ name: "notifyOnFFstart",
+					  type: 'boolean',
+					  label: "Show Notifications when you start Firefox?",
+					  trueLabel: "Yes",
+					  falseLabel: "No"
+					}
+				]
+	},
+]
+};
+
+
+
+jetpack.future.import("storage.settings");  
 jetpack.future.import('slideBar');
 
 Rubrick = {
-    serverBase: 'http://code.rubrick-jetpack.org/',
-//	serverBase: 'http://localhost/testJS/jetpacks/rubrick/',  
+//    serverBase: 'http://code.rubrick-jetpack.org/',
+	serverBase: 'http://localhost/testJS/jetpacks/rubrick/',  
     icon: 'http://code.rubrick-jetpack.org/images/rubrick.png',
     currUserURI : false , 
 	currContextURI : null , 
@@ -21,26 +47,40 @@ Rubrick = {
 	rLineVals: {} , 
 	recordings : {} ,
 	submissions : {} ,
+	"r:Rubric" : {},
+	"r:Context" : {} ,
+	"sioc:User" : {},
+	"r:Submission" : {},
+	"r:Recording" : {},
+	"r:RubricLine" : {},
+	"r:RubricLineValue" : {},
 	perms : {} , 
 	users : {} , 
 	blockPost : false ,
-	
+	rubricMakerIsSetup : false, 
+	prefixMap : {
+		"sioc" : "http://rdfs.org/sioc/ns#",
+		"foaf" : "http://xmlns.com/foaf/0.1/",
+		"r" : "http://code.rubrick-jetpack.org/vocab/",
+		"tagging" : "http://www.holygoat.co.uk/owl/redwood/0.1/tags/"
+		},
 
+	defaultLabelPred : 'sioc:name',
+	defaultDescPred : 'r:description',
 
     initTab: function() {
 
         Rubrick.focusedTab = jetpack.tabs.focused;
 
-		if(jetpack.tabs.focused.url.stripSlash() == Rubrick.serverBase + 'rubricMaker.php') {
-			$('#submitButton', Rubrick.focusedTab.contentDocument).click(Rubrick.handleRubricCreate);
+		if( (jetpack.tabs.focused.url.stripSlash() == Rubrick.serverBase + 'rubricMaker.php') && ( ! Rubrick.rubricMakerIsSetup )   ) {
+				//TODO: check if the page is fully loaded.
+			Rubrick.initRubricMaker();
+			Rubrick.rubricMakerIsSetup = true;
 		}
 
-		
     },
 
-	handleRubricCreate : function() {
-		Rubrick.notify('Submitting rubric');
-	},
+
 
 
     handleStatusWidgetClick : function(widget) {
@@ -50,10 +90,9 @@ Rubrick = {
     },
 
 	initRubric : function() {
-		Rubrick.currRecording = new Rubrick.Recording() ;
+		Rubrick.currRecording = new Rubrick.Recording() ;		
 		
-		Rubrick.displayRubric();		
-	
+		Rubrick.showRubric();	
 	},
 
 
@@ -76,16 +115,24 @@ Rubrick = {
 	},
 
 	
-	selectContext : function(event) {
+	selectContext : function(e) {
 		Rubrick.getAvailableContexts();
-		Rubrick.currContextURI = event.target.uri;
-		$(event.target).addClass('focused');
-		Rubrick.displayContextRubrics();
+		Rubrick.currContextURI = $(e.target).data('uri');
+		$(e.target).addClass('focused');
+		if(Rubrick.util.hasPermission('r:submitItems')) {
+			$('#submitPane', Rubrick.slideWidget.contentDocument).show();
+		} else {
+			$('#submitPane', Rubrick.slideWidget.contentDocument).hide();
+		}
+		Rubrick.showContextRubrics();
 	},
 
-	selectRubric : function(event) {
-		Rubrick.currRubricURI = event.target.uri;
-		Rubrick.getRubricByURI(event.target.uri);
+	selectRubric : function(e) {
+		
+		
+		Rubrick.currRubricURI = $(e.target).data('uri');
+		//Rubrick.initRubric();
+		Rubrick.getRubricByURI($(e.target).data('uri'));
 	},
 
 	maximizePane : function(event) {
@@ -146,9 +193,10 @@ Rubrick = {
 
 		$.getJSON(Rubrick.serverBase + 'getRubric.php', 
 			{ uri: rURI ,
-			  by: 'byURI' , 
+			  contextURI : Rubrick.currContextURI ,
+			  by: 'byRubricURI' 
 			},
-			Rubrick.getRubrickByURICallback 
+			Rubrick.getRubricByURICB 
 		);
 
 	},
@@ -191,14 +239,14 @@ Rubrick = {
 			{nick : nickval ,
 			 pwd : pwdval
 			},
-		Rubrick.loginCallback
+		Rubrick.loginCB
 		);
 	},
 
 	logout : function() {
 		$.post(Rubrick.serverBase + "logout.php" ,
 		{},
-		Rubrick.logoutCallback
+		Rubrick.logoutCB
 		);
 	},
 
@@ -215,8 +263,20 @@ Rubrick = {
 		);
 	},
 
+	postContext: function() {
 
-	sendRecording: function() {
+        var newName = $('#newContextName', jetpack.tabs.focused.contentDocument).val();
+        var newDesc = $('#newContextDesc', jetpack.tabs.focused.contentDocument).val();
+		$.post(Rubrick.serverBase + "createContext.php", 
+			{ "sioc:name": newName,
+			  "r:description" : newDesc 
+			},
+			Rubrick.postContextCB 
+		);
+
+	},
+
+	postRecording: function() {
 //ARC2 doesn't seem to like it if you hit send many times quickly, so block.
 //doing it async led to a really bad user experience
 		if(Rubrick.blockPost) {
@@ -226,19 +286,54 @@ Rubrick = {
 			Rubrick.blockPost = true;
 			Rubrick.notify('Sending the info.');
 		}
-
+//Rubrick.notify('rlvs ' + JSON.stringify(Rubrick.currRecording.recordedLineValues) );
+//return;
 		$.post(Rubrick.serverBase + 'postRecording.php' ,
-			{	creator : Rubrick.currRecording.creator , 
+			{	"dcterms:creator" : Rubrick.currUserURI , 
 				context : Rubrick.currContextURI , 
 				rubric : Rubrick.currRubricURI , 
 				page : Rubrick.currRecording.page , 
-				'lineValues[]' : Rubrick.currRecording.recordedLineValues 				
+				"r:hasLineValues[]" : Rubrick.currRecording.recordedLineValues
 			},
-			Rubrick.sendRecordingCallback
+			Rubrick.postRecordingCB
+		);
+
+	},
+
+	postSubmission: function() {
+		var noteText = $('#submissionNoteArea', Rubrick.slideWidget.contentDocument).val();
+		var pageURL = jetpack.tabs.focused.url.stripSlash();
+
+		$.post(Rubrick.serverBase + 'postSubmission.php' ,
+			{creator : Rubrick.currUserURI ,
+			 context : Rubrick.currContextURI,
+			 page : pageURL ,
+			 "r:hasNote" : noteText
+			},
+			Rubrick.postSubmissionCB
 		);
 
 
 	},
+
+	postRubric : function() {
+		Rubrick.ui.RowsManager.setJSON();
+		var rowsJSON = Rubrick.ui.RowsManager.json;
+		var rMeta = {};
+		for(var field in Rubrick.ui.RubricMeta) {
+			rMeta[field] = Rubrick.ui.RubricMeta[field].getJSON();	
+		}
+		var rJSON = {};
+		rJSON.rubricLines = rowsJSON;
+		rJSON.rubricMeta = rMeta;
+		var jsonStr = JSON.stringify(rJSON);
+		
+		$('#debug', jetpack.tabs.focused.contentDocument).text(jsonStr);
+		//$.post('http://code.rubrick-jetpack.org/createRubric.php', { rJSON : rj   } );  		
+		Rubrick.notify('Submitting rubric');
+	},
+
+
 /* AJAX Callbacks -- GETing */
 
 	checkLoggedInCB: function(data) {
@@ -246,10 +341,8 @@ Rubrick = {
 
 		if(data.status == 'loggedIn') {
 			data.message = false;
-			Rubrick.loginCallback(data);
-	
+			Rubrick.loginCB(data);	
 		}
-
 	},
 
     initSlideWidget: function(data) {
@@ -264,30 +357,26 @@ Rubrick = {
 
     }, 
 
-	getRubrickByURICallback: function(data) {
-		//TODO: abstract this to a collection of rubrics
-		//TODO: get recordings as well, and handle as in getAvailableContextsCB
+	getRubricByURICB: function(data) {
 		data = Rubrick.util.checkObject(data);
-		//Rubrick.currRubricURI = data.rubricURI;
-		for(var uri in data.rLines) {
-			Rubrick.rLines[uri] = data.rLines[uri];
+		for(var type in data) {
+			switch(type) {
+				case 'r:Recording':
+					Rubrick['r:Recording'] = new Rubrick.Graph(data['r:Recording']);					
+				break;
+				
+				default:
+					if(Rubrick[type] && Rubrick[type].mergeJSON) {
+						Rubrick[type].mergeJSON(data[type]);
+
+					} else {
+						
+						Rubrick[type] = new Rubrick.Graph(data[type]);
+					}				
+				break;
+			}		
 		}
-		for(var uri in data.rLineVals) {
-			Rubrick.rLineVals[uri] = data.rLineVals[uri];
-		}
-//TODO: move to getAvailableRubrics
-/*
-	    var slidebarDoc = Rubrick.slideWidget.contentDocument;
-		var rubricSel = slidebarDoc.getElementById('rubricSelect');
-		var li = slidebarDoc.createElement('li');
-		$(li).addClass('rubricName');
-		var initRAnchor = slidebarDoc.createElement('a');
-		$(initRAnchor).text(data.rObj.name);
-		$(initRAnchor).addClass('selected');
-		$(initRAnchor).click(Rubrick.initRubric);
-		$(li).append(initRAnchor);
-		$(rubricSel).append(li);
-*/
+
 		Rubrick.initRubric();
 	},
 
@@ -295,44 +384,33 @@ Rubrick = {
 //		var data = eval(data);
 
 	    var slidebarDoc = Rubrick.slideWidget.contentDocument;
-		Rubrick.contexts = data.contexts;
-		Rubrick.perms = data.perms;
-		Rubrick.rubrics = data.rubrics;
-		Rubrick.recordings = data.recordings;
-		Rubrick.recordings.size = function() {
-				var size = 0 ; 
-				for(var uri in this) {
-					if( (typeof this[uri] != 'function') ) {
-						size++;
-					}
-				}
-				return size;
-			};
-		Rubrick.recordings.countURIsInProperty = function(prp, uri) {
-				var count = 0;
-				for each(var obj in this) {
-
-					if(obj.page == jetpack.tabs.focused.url.stripSlash()) {
-
-						if(typeof obj != 'function') {
-							if( obj[prp].indexOf(uri) != -1 ) {
-								count++;
-							}
-						}
-					}
-				}
-				return count;
-			};
-		$('ul#contextSelect', slidebarDoc).empty();
-		for( var context in Rubrick.contexts) {
-			var li = slidebarDoc.createElement('li');
-			var cAnchor = Rubrick.util.template(slidebarDoc, Rubrick.contexts[context].name, Rubrick.templates.contextNameLink);
-			cAnchor.uri = context;
-			$(cAnchor).click(Rubrick.selectContext);
-			$(li).append(cAnchor);
-			$('ul#contextSelect', slidebarDoc).append(li);
+	
+		data = Rubrick.util.checkObject(data);
+		for (var prop in data) {
+			switch(prop) {
+				case 'tagURIMap':
+				case 'perms':
+					Rubrick[prop] = data[prop];	
+				break;
+				default:
+					Rubrick[prop] = new Rubrick.Graph(data[prop]);
+				break;
+			}
+			
 		}
 
+		$('ul#contextSelect', slidebarDoc).empty();
+		
+		var cURIs = Rubrick['r:Context'].getSubjectURIs();
+		cURIs.forEach(function(cURI) {
+			var li = slidebarDoc.createElement('li');
+			var label = Rubrick['r:Context'].getFirstObjectForSubjectPred(cURI, 'sioc:name', true);
+			var cAnchor = Rubrick.util.template(slidebarDoc, label, Rubrick.templates.contextNameLink);
+			$(cAnchor).data('uri', cURI);
+			$(cAnchor).click(Rubrick.selectContext);
+			$(li).append(cAnchor);
+			$('ul#contextSelect', slidebarDoc).append(li);			
+		});
 	},
 
 
@@ -342,7 +420,7 @@ Rubrick = {
 
 /* AJAX Callbacks -- POSTing */
 
-	loginCallback : function(data) {
+	loginCB : function(data) {
 		data = Rubrick.util.checkObject(data);
 		if(data.status == 'fail') {
 			Rubrick.notify(data.message);
@@ -364,7 +442,7 @@ Rubrick = {
 
 
 
-	logoutCallback : function(data) {
+	logoutCB : function(data) {
 		data = Rubrick.util.checkObject(data);
 		Rubrick.currUserURI = false;
 		var slidebarDoc = Rubrick.slideWidget.contentDocument;
@@ -379,18 +457,45 @@ Rubrick = {
 		Rubrick.notify(data.message);
 	},
 
-	registerCallback : function(data) {
+	registerCB : function(data) {
 		data = Rubrick.util.checkObject(data);
 		Rubrick.notify(data.message);
 
 	},
 
 
-	sendRecordingCallback: function(data) {		
+	postRecordingCB: function(data) {		
 		Rubrick.blockPost = false;
 		data = Rubrick.util.checkObject(data);
 		Rubrick.notify(data.message);
 		Rubrick.getAvailableContexts();
+	},
+
+	postSubmissionCB: function(data) {
+		data = Rubrick.util.checkObject(data);
+		Rubrick.notify(data.message);
+	},
+
+	postContextCB: function(data) {
+		
+		var data = Rubrick.util.checkObject(data);
+		if (data.status == 'success') {
+
+			var container = $('#rubric-contexts-container', jetpack.tabs.focused.contentDocument).find('div')[0];
+			//var newLI = $('li:last', container );
+			//$(newLI).attr('uri', data.uri);
+			//Rubrick.notify(data.uri);
+			var fieldManager = $('#rubric-contexts-container', jetpack.tabs.focused.contentDocument).find('div')[0].manager;
+			var newVal = decodeURIComponent(data.uri);
+			//var newVal = 'wtf';
+            fieldManager.valueToLabelMap[newVal] = data.label;
+			
+            fieldManager.addAllowedValue(newVal);            
+            fieldManager.addInput(newVal);
+
+            $('#createContextContainer', jetpack.tabs.focused.contentDocument).hide();
+
+		}
 	},
 
 	notify: function(message, style) {
@@ -403,7 +508,64 @@ Rubrick = {
 /* Utility Methods */
 
 	util : {
+		getObjectLabel: function(uri, predURI, oType) {
+			
+			if(! oType) {
+				if(! predURI ) {
+					predURI = Rubrick.activePredURI;
+				}
+				oType = Rubrick.ranges[predURI];
+			}
+			if(Rubrick.activeObjectType) {
+				oType = Rubrick.activeObjectType;
+			}
+			var labelQName = "sioc:name";
 
+			//alert(uri + " " + oType);
+			switch (oType) {
+				case 'tagging:Tagging':
+					oType = 'tagging:Tag';
+					labelQName ="tagging:name";					
+				break;
+				case 'tagging:Tag':
+					labelQName = "tagging:name";
+				break;
+				case 'r:Permissioning' :
+					oType = 'allEntities';
+					
+					var label = Rubrick[oType].getFirstObjectForSubjectPred(uri, labelQName, true);
+					if(label) {
+						return label;
+					}
+					
+					labelQName = 'r:permissonName';
+					oType = 'allPermissions';
+					var label = Rubrick[oType].getFirstObjectForSubjectPred(uri, labelQName, true);
+					if(label) {
+						return label;
+					}
+					
+					labelQName = 'sioc:name';
+					oType = 'r:ConfirmationUserGroup';
+					var label = Rubrick[oType].getFirstObjectForSubjectPred(uri, labelQName, true);
+					if(label) {
+						return label;
+					}
+										
+
+					
+				default:
+				
+				
+				break;
+				
+				
+			}
+
+			return Rubrick[oType].getFirstObjectForSubjectPred(uri, labelQName, true);
+
+			
+		},
 		checkObject :function(data) {
 			if(typeof data != 'object') {
 				return eval('(' + data + ')');
@@ -412,24 +574,26 @@ Rubrick = {
 
 		},
 
-		countRubricPageRecordings: function() {
-			var count = 0;
-			for each (var rec in Rubrick.recordings) {
-				if(  (rec.page == jetpack.tabs.focused.url.stripSlash())  && (rec.rubric == Rubrick.currRubricURI)  ) {
-					count++;
-				}
-			}
 
-			return count;
-		},
 
 		hasPermission: function(perm) {
-			if(Rubrick.perms[Rubrick.currContextURI].indexOf(perm) == -1) {
-				return false;
-			}
-			return true;
+			perm = Rubrick.util.expandPName(perm);
+			var hasPerm = false;			
+			Rubrick.perms[Rubrick.currContextURI].forEach(function(permObj) {
+				if(permObj.perm == perm) {
+					hasPerm = true;
+				}
+			});
+			return hasPerm;
 		},
-
+		expandPName : function (pname) {
+			
+			var parts = pname.split(':');
+			if ( Rubrick.prefixMap[parts[0]] && (parts[0] != 'http') ) {
+				return Rubrick.prefixMap[parts[0]] + parts[1];
+			}
+			return pname;
+		},
 
 		resetAll: function() {
 		    var doc = Rubrick.slideWidget.contentDocument;
@@ -460,7 +624,7 @@ Rubrick = {
                 el.setAttribute(att, atts[att]);
             }
             return el;
-        },
+        }
     },
 
 /* Templates */
@@ -484,19 +648,22 @@ Rubrick = {
 /* Pseudo-Panel display */
 
 
-	displayContextRubrics : function() {
+	showContextRubrics : function() {
 		var slidebarDoc = Rubrick.slideWidget.contentDocument;
 
 		$('#contextRubricsContainer', slidebarDoc).empty();
 
-		var rURIs = Rubrick.contexts[Rubrick.currContextURI].rubricURIs;
-
-		if(rURIs) {
-			rURIs.forEach(function(uri) {
-				var rObj = Rubrick.rubrics[uri];
+		//var rURIs = Rubrick["r:Context"][Rubrick.currContextURI]["r:hasRubric"];
+		var rubricObjs = Rubrick['r:Context'].getObjectsForSubjectPred(Rubrick.currContextURI, 'r:hasRubric');
+		
+		
+		if(rubricObjs) {
+			rubricObjs.forEach(function(rObj) {
+				
+				var rLabel = Rubrick.util.getObjectLabel(rObj.value, false, 'r:Rubric');
 				var rLI = slidebarDoc.createElement('li');
-				var rA = Rubrick.util.template(slidebarDoc, Rubrick.rubrics[uri].name, Rubrick.templates.rubricName );
-				rA.uri = uri;
+				var rA = Rubrick.util.template(slidebarDoc, rLabel, Rubrick.templates.rubricName );
+				$(rA).data('uri', rObj.value);				
 				$(rA).click(Rubrick.selectRubric) ;
 				$(rLI).append(rA);
 				$('#contextRubricsContainer', slidebarDoc).append(rLI);
@@ -505,23 +672,31 @@ Rubrick = {
 		}
 	} , 
 
-	displayRubric :  function () {
-		var rObj = Rubrick.rubrics[Rubrick.currRubricURI];
-		var rDiv;
+	showRubric :  function () {
+		var rubric = Rubrick['r:Rubric'].getSubjectAsGraph(Rubrick.currRubricURI);
+		
+		//var rObj = Rubrick["r:Rubric"][Rubrick.currRubricURI];
+		//var rDiv;
 		var slidebarDoc = Rubrick.slideWidget.contentDocument;
 		var doc = jetpack.tabs.focused.contentDocument;
-		rDiv = Rubrick.setupPanel();
+		var rDiv = Rubrick.setupPanel();
 		Rubrick.updateRubricMeta();
 
 		var linesContainer = $('.rubricLines', rDiv);
 
-		for(var i=0; i<rObj.rLines.length; i++) {
-			var lineEl = Rubrick.templateLine(Rubrick.rLines[rObj.rLines[i]]);
-			lineEl.uri = rObj.rLines[i];
 
-			if(Rubrick.util.hasPermission('record')) {
-				$(lineEl).click(function(event) {
-						var node = event.target;
+		var rubricLines = rubric.getObjectsForSubjectPred(Rubrick.currRubricURI, 'r:hasLine');
+		
+		for(var i=0; i<rubricLines.length; i++) {
+			var lineObj = rubricLines[i];
+			var lineEl = Rubrick.templateLine(Rubrick["r:RubricLine"].getSubjectAsGraph(lineObj.value));
+			//var lineEl = Rubrick.templateLine(Rubrick["r:RubricLine"][rObj["r:hasLine"][i]]);
+			$(lineEl).data('uri', lineObj.value);
+			//lineEl.uri = lineObj.value;
+
+			if(Rubrick.util.hasPermission('r:record')) {
+				$(lineEl).click(function(e) {
+						var node = e.target;
 						while(node.nodeName != 'TD') {
 							node = node.parentNode;
 						}
@@ -530,11 +705,12 @@ Rubrick = {
 							return;
 						}
 						this.selectedValue = node.uri;
+						$(this).data('selectedValue', $(node).data('lineValURI'));
 						for(var i = 1; i< this.childNodes.length; i++) {
 							$(this.childNodes[i]).removeClass('selected');
-							Rubrick.currRecording.removeValue(this.childNodes[i].uri);
+							Rubrick.currRecording.removeValue($(this.childNodes[i]).data('lineValURI'));
 						}
-						Rubrick.currRecording.recordedLineValues.push(node.uri);
+						Rubrick.currRecording.recordedLineValues.push($(node).data('lineValURI'));
 						$(node).addClass('selected');
 
 					});
@@ -544,8 +720,11 @@ Rubrick = {
 
 	//add the LineName to the slidebar
 			var lineLI = Rubrick.util.template(slidebarDoc, '', Rubrick.templates.lineNameLI);
-			var lineNameEl = Rubrick.util.template(slidebarDoc, Rubrick.rLines[rObj.rLines[i]].name, Rubrick.templates.lineNameLink  );
-			lineNameEl.uri = rObj.rLines[i];
+			//var lineNameEl = Rubrick.util.template(slidebarDoc, Rubrick.rLines[rObj.rLines[i]].name, Rubrick.templates.lineNameLink  );
+			var lineNameEl = Rubrick.util.template(slidebarDoc, Rubrick.util.getObjectLabel(lineObj.value, false, 'r:RubricLine'), Rubrick.templates.lineNameLink);
+//			var lineNameEl = Rubrick.util.template(slidebarDoc, Rubrick["r:RubricLine"][rObj["r:hasLine"][i]].name, Rubrick.templates.lineNameLink  );
+			$(lineNameEl).data('uri', lineObj.value );
+			//lineNameEl.uri = rObj["r:hasLine"][i];
 			$(lineNameEl).click(Rubrick.focusLine);
 			$(lineLI).append(lineNameEl);
 
@@ -557,27 +736,39 @@ Rubrick = {
 	displayRecordedLineVals:  function() {
 		var panel = Rubrick.rDiv; //this will change when panels work in jetpack
 		var doc = jetpack.tabs.focused.contentDocument;
-		var lineValContainers = $('.lineValContainer', panel);
-		var totalRecs = Rubrick.util.countRubricPageRecordings();
+		//var lineValContainers = $('.lineValContainer', panel);
 
-		if(totalRecs == 0) {
+		var thisPageRecsGraph = Rubrick['r:Recording'].getPredObjectValueAsGraph('r:hasPage',jetpack.tabs.focused.url.stripSlash() )
+		var debug = doc.createElement('div');
+		$(debug).text(thisPageRecsGraph.stringify());
+		var totalRecsForPage = thisPageRecsGraph.subjectsCount();
+		//var totalRecsForPage = Rubrick['r:Recording'].objectValueCount(jetpack.tabs.focused.url.stripSlash());
+
+		
+		
+		$(doc.body).append(debug);
+		if(totalRecsForPage == 0) {
 			Rubrick.notify('No records for this page and context yet!');
 		}
 
 		$('.lineValContainer', panel).each(function() {
+			var lineValURI = $(this).data('lineValURI');
 
-			var count = Rubrick.recordings.countURIsInProperty('recordedLineVals',  this.uri );
+			var count = thisPageRecsGraph.objectValueCount(lineValURI);
+			//var count = Rubrick['r:Recording'].objectValueCount(lineValURI);
+			var test = Rubrick['r:Recording'].getAllObjects();
+
 			if(count != 0 ) {
 				$(this).addClass('recorded');
 			}
 
-			if(totalRecs > 1) {
+			if(totalRecsForPage > 1) {
 				//display with visual cue to relative weights
 				$('.graph', this).removeClass('hidden');
 				$('.stats', this).removeClass('hidden');
-				$('.graph', this).width( (count / totalRecs) * 120 + "px" );
+				$('.graph', this).width( (count / totalRecsForPage) * 120 + "px" );
 				$('.count', this).text(count);
-				$('.total', this).text(totalRecs);
+				$('.total', this).text(totalRecsForPage);
 
 			}
 
@@ -586,15 +777,14 @@ Rubrick = {
 	},
 
 
-
 	setupPanel :  function () {
 		var slidebarDoc = Rubrick.slideWidget.contentDocument;
 		var doc = jetpack.tabs.focused.contentDocument;
 		var styleEl = doc.createElement('link');
 		styleEl.setAttribute('rel', 'stylesheet');
 		styleEl.setAttribute('type', 'text/css');
-	//	styleEl.setAttribute('href', 'http://localhost/testJS/jetpacks/rubrick/css/rubricPane.css');
-	    styleEl.setAttribute('href', 'http://code.rubrick-jetpack.org/css/rubricPane.css');
+		styleEl.setAttribute('href', 'http://localhost/testJS/jetpacks/rubrick/css/rubricPane.css');
+	//    styleEl.setAttribute('href', 'http://code.rubrick-jetpack.org/css/rubricPane.css');
 		doc.getElementsByTagName('head')[0].appendChild(styleEl);
 	
 
@@ -617,16 +807,15 @@ Rubrick = {
 		$(rDiv).append(rActionsDiv);
 
 		/* build and add a send button, if permissions apply */
-
-		if(Rubrick.currUserURI && Rubrick.util.hasPermission('record')) {
+		if(Rubrick.currUserURI && Rubrick.util.hasPermission('r:record')) {
 			var sendButton = slidebarDoc.createElement('a');
 			$(sendButton).text('Send');
-			$(sendButton).click(Rubrick.sendRecording);
+			$(sendButton).click(Rubrick.postRecording);
 			$(sendButton).addClass('action');
 			$(rActionsDiv).append(sendButton);
 		}
 
-		if(Rubrick.util.hasPermission('viewRecordings')) {
+		if(Rubrick.util.hasPermission('r:viewRecordings')) {
 			var viewLink = slidebarDoc.createElement('a');
 			$(viewLink).addClass('action');
 			$(viewLink).text('View Records');
@@ -634,7 +823,7 @@ Rubrick = {
 			$(rActionsDiv).append(viewLink);
 		}
 
-		if(Rubrick.util.hasPermission('getReport')) {
+		if(Rubrick.util.hasPermission('r:getReport')) {
 			var reportLink = slidebarDoc.createElement('a');
 			$(reportLink).addClass('action');
 			$(reportLink).text('Get Report');
@@ -667,16 +856,16 @@ Rubrick = {
 	updateRubricMeta :  function () {
 		var slidebarDoc = Rubrick.slideWidget.contentDocument;
 		var doc = jetpack.tabs.focused.contentDocument;
-		var rObj= Rubrick.rubrics[Rubrick.currRubricURI];
+		var rubric = Rubrick['r:Rubric'].getSubjectAsGraph(Rubrick.currRubricURI);
+		//var rObj= Rubrick["r:Rubric"][Rubrick.currRubricURI];
 	/* Setup and template the metadata for the rubric */
 		var metaContainer = slidebarDoc.getElementById('rubricMetaContainer');
-
-		$('div#selectedRubric h2.rubricName', slidebarDoc).text(rObj.name);
-		$('div#selectedRubric h2.rubricName', slidebarDoc).addClass('rubrick');
+		$('div#selectedRubric h2.rubricName', slidebarDoc).text(rubric.getLabel());
+		$('div#selectedRubric h2.rubricName', slidebarDoc).addClass('rubric');
 
 
 		$('p.rubricDesc', metaContainer).empty();
-		$('p.rubricDesc', metaContainer).text(rObj.desc);
+		$('p.rubricDesc', metaContainer).text(rubric.getDescription());
 
 		var allLinesLink = slidebarDoc.createElement('a');
 		$(allLinesLink).click(Rubrick.focusAllLines);
@@ -691,24 +880,32 @@ Rubrick = {
 	}, 
 
 
-	templateLine :  function(lineObj) {
+	templateLine :  function(lineGraph) {
+		
+		var graphURI = lineGraph.getSubjectURIs()[0];
 		var doc = jetpack.tabs.focused.contentDocument;
 		var lineContainer = doc.createElement('tr');
 		var metaContainer = doc.createElement('td');
-
-		if(lineObj.name) {
-			metaContainer.appendChild(Rubrick.util.template(doc, lineObj.name, Rubrick.templates.lineName));
+		var label = lineGraph.getLabel();
+		if(label) {
+			metaContainer.appendChild(Rubrick.util.template(doc, label, Rubrick.templates.lineName));
 		}
-
-		if(lineObj.desc) {
-			metaContainer.appendChild(Rubrick.util.template(doc, lineObj.desc, Rubrick.templates.lineDesc));
+		var desc = lineGraph.getDescription();
+		if(desc) {
+			metaContainer.appendChild(Rubrick.util.template(doc, desc, Rubrick.templates.lineDesc));
 		}
-
 
 		lineContainer.appendChild(metaContainer);
-		for (var i=0; i < lineObj.rLValues.length; i++) {
-			var lineValEl = Rubrick.templateLineValue(Rubrick.rLineVals[lineObj.rLValues[i]]);
-			lineValEl.uri = lineObj.rLValues[i];
+		
+		var lineValues = lineGraph.getObjectsForSubjectPred(graphURI, 'r:hasLineValue');
+
+		for (var i=0; i < lineValues.length; i++) {
+			var lineValEl = Rubrick.templateLineValue(lineValues[i]);
+			//var lineValEl = doc.createElement('td');
+			//$(lineValEl).text('woot');
+			
+			$(lineValEl).data('uri', '');
+			//lineValEl.uri = lineObj["r:hasLineValue"][i];
 			lineContainer.appendChild(lineValEl);
 		}
 	
@@ -716,10 +913,12 @@ Rubrick = {
 	}, 
 
 	templateLineValue :  function(lineValObj) {
+		var lineVal = Rubrick['r:RubricLineValue'].getSubjectAsGraph(lineValObj.value);
 		var doc = jetpack.tabs.focused.contentDocument;
 		var lineValContainer = doc.createElement('td');	
 		$(lineValContainer).addClass('lineValContainer');
-
+		$(lineValContainer).data('lineValURI', lineValObj.value);
+		//$(lineValContainer).data('wtf', 'shit');
 		var infoContainer = doc.createElement('div');
 		$(infoContainer).addClass('info');
 
@@ -747,27 +946,443 @@ Rubrick = {
 		$(totalContainer).addClass('total');
 		$(statsContainer).append(totalContainer);
 
-
-
 		$(infoContainer).append(graphContainer);
 		$(infoContainer).append(statsContainer);
 		$(lineValContainer).append(infoContainer);
-		$(lineValContainer).append(Rubrick.util.template(doc, lineValObj.desc, Rubrick.templates.lineValDesc));
+		$(lineValContainer).append(Rubrick.util.template(doc, lineVal.getDescription() , Rubrick.templates.lineValDesc));
 
 		return lineValContainer;
 	}, 
 
+
+/* RubricMaker page */
+	fieldsConfigArray : [ {
+			fieldName: 'Name', type: 'ShortTextField', configObj : {
+			defaultValue: "Name this rubric line"
+			}
+		}, {
+			fieldName: 'Description', type: 'LongTextField', configObj : {
+			defaultValue: "Describe the skills that this line evaluates"
+			}
+		}, {
+			fieldName: 'Tags', type: 'ShortTextField', configObj: {
+			defaultValue: "Add a tag", allowMultiple : 'true'
+			}
+		}, {
+			fieldName: 'Public', type: 'BooleanEnumerationField', configObj: {
+			defaultValue: 'true'
+			}
+		}, {
+			fieldName: 'order', type: 'OrderedEnumerationField', configObj: {}
+		}, {
+			fieldName: 'v5', type: 'LongTextField', configObj : {
+			defaultValue: "Describe the Rubric Value here.", score : 1
+			}
+		}, {
+			fieldName: 'v4', type: 'LongTextField', configObj : {
+			defaultValue: "Describe the Rubric Value here.", score : 2
+			}
+		}, {
+			fieldName: 'v3', type: 'LongTextField', configObj : {
+			defaultValue: "Describe the Rubric Value here.", score : 3
+			}
+		}, {
+			fieldName: 'v2', type: 'LongTextField', configObj : {
+			defaultValue: "Describe the Rubric Value here.", score : 4
+			}
+		}, {
+			fieldName: 'v1', type: 'LongTextField', configObj : {
+			defaultValue: "Describe the Rubric Value here.", score : 5
+			}
+		}
+		
+		], 
+
+	initRubricMaker: function() {		
+		var initArray = []; //TODO: this might turn into the way to build off of an existing rubric
+		var contextsInit = {}; //TODO: build this from the existing info in Rubrick about contexts and the permission to add a rubrick to it. will also need to dig up the context name for the value-label map
+		$('#submitButton', Rubrick.focusedTab.contentDocument).click(Rubrick.postRubric);
+		$('#createContextDone', Rubrick.focusedTab.contentDocument).click(Rubrick.postContext);		
+		$('#addRubrickLine', jetpack.tabs.focused.contentDocument).click(Rubrick.ui.RowsManager.addRow);
+		$('#showContextCreate', jetpack.tabs.focused.contentDocument).click(function() {																			
+											$('#createContextContainer', jetpack.tabs.focused.contentDocument).show();
+											});
+		Rubrick.ui.RowsManager.init(initArray, Rubrick.fieldsConfigArray);
+
+		Rubrick.ui.RowsManager.addRow();
+
+		Rubrick.ui.RubricMeta = {name : Rubrick.ui.FieldFactory.getField('ShortTextField', 'rName', { defaultValue: 'Rubric Name' } ), 
+							 desc : Rubrick.ui.FieldFactory.getField('LongTextField', 'rDesc', { defaultValue: 'Rubric Description' } ), 
+							 tags : Rubrick.ui.FieldFactory.getField('ShortTextField', 'rTags', {defaultValue: 'Rubric Tags' , allowMultiple: 'true' }),
+							 pub : Rubrick.ui.FieldFactory.getField('BooleanEnumerationField', 'rPublic', {defaultValue: 'true'} ) ,
+							 contexts: Rubrick.ui.FieldFactory.getField('EnumerationField', 'rContexts', contextsInit )
+							 } ;
+
+		rNameContainer = $('#rubric-name-container', jetpack.tabs.focused.contentDocument);
+		rDescContainer =  $('#rubric-description-container', jetpack.tabs.focused.contentDocument);
+		rTagsContainer =  $('#rubric-tags-container', jetpack.tabs.focused.contentDocument);
+		rPublicContainer = $('#rubric-public-container', jetpack.tabs.focused.contentDocument);
+		$('#rubric-contexts-container', jetpack.tabs.focused.contentDocument).append(Rubrick.ui.RubricMeta.contexts.container);		
+		$(rNameContainer) .append(Rubrick.ui.RubricMeta.name.container);	
+		$(rDescContainer) .append( Rubrick.ui.RubricMeta.desc.container);				
+		$(rTagsContainer) .append( Rubrick.ui.RubricMeta.tags.container);		
+		$(rPublicContainer).append(Rubrick.ui.RubricMeta.pub.container);		
+	}, 
+
+
+
 /* Classes */
 
+	Graph : function(json) {
+		this.json = json ? json : {};
+		this.prefixMap = {
+			"sioc" : "http://rdfs.org/sioc/ns#",
+			"foaf" : "http://xmlns.com/foaf/0.1/",
+			"r" : "http://code.rubrick-jetpack.org/vocab/",
+			"dcterms" : "http://purl.org/dc/terms/",
+			"tagging" : "http://www.holygoat.co.uk/owl/redwood/0.1/tags/",
+			"xsd" : "http://www.w3.org/2001/XMLSchema#"
+		};
+		this.labelPred = 'sioc:name';
+		this.descPred = 'r:description';
+		this.getLabel = function() {
+			if(this.subjectsCount() != 1) {
+				return false;
+			}
+			var uris = this.getSubjectURIs();
+			return this.getFirstObjectForSubjectPred(uris[0], this.labelPred, true);			
+		};
+		this.getDescription = function() {
+			if(this.subjectsCount() != 1) {
+				return false;
+			}
+			var uris = this.getSubjectURIs();
+			return this.getFirstObjectForSubjectPred(uris[0], this.descPred, true);
+		};
+		this.empty = function() {
+			this.json = {};	
+		}
+		
+		this.stringify = function() {
+			return JSON.stringify(this.json);
+		}
+		
+		this.subjectsCount = function() {
+			var count = 0;
+			for(var s in this.json) {
+				count++;
+			}
+			return count;
+		}
+		this.triplesCount = function() {
+			var count = 0;
+			for(var s in this.json) {
+				for (var p in this.json[s]) {
+					count = count + this.json[s][p].length;
+				}
+			}
+			return count;
+		}
+		
+		this.hasSubject = function(sURI) {
+			sURI = this.expandPName(sURI);
+						
+			if(this.json[sURI]) {
+				return true;
+			}
+			return false;
+		}
+		
+		this.getSubject = function(sURI) {
+			sURI = this.expandPName(sURI);
+		
+			if(this.hasSubject(sURI)) {
+				return this.json[sURI];
+			}
+			return false;
+			
+		}
+		
+		this.getPredsForSubject = function(sURI) {
+			sURI = this.expandPName(sURI);
+						
+			if(this.hasSubject(sURI)) {
+				var predArray = [];
+				for(var pred in this.json[sURI]) {
+					predArray.push(pred);
+				}
+				return predArray;
+			}
+			return false;
+		}
+		
+		this.getObjectsForSubjectPred = function(sURI, pURI, asValue) {
+			sURI = this.expandPName(sURI);
+			pURI = this.expandPName(pURI);
+			
+			if(this.hasSubject(sURI) && this.hasSubjectPred(sURI, pURI)) {
+				var objectArray =  this.json[sURI][pURI];
+				if (asValue === true) {
+					var retArray = [];
+					objectArray.forEach(function(obj) {
+						retArray.push(obj.value);
+					});
+					return retArray;
+				} else {
+					return objectArray;
+				}
+				
+			}
+			return false;
+		}
+		
+		this.hasSubjectPred = function(sURI, pURI) {
+			sURI = this.expandPName(sURI);
+			pURI = this.expandPName(pURI);			
+			if(this.hasSubject(sURI)) {
+				if(this.json[sURI][pURI]) {
+					return true;
+				}
+				return false;
+			}
+			return false;
+		}
+		
+		this.getFirstObjectForSubjectPred = function(sURI, pURI, asValue) {
+			sURI = this.expandPName(sURI);
+			pURI = this.expandPName(pURI);
+			var objects = this.getObjectsForSubjectPred(sURI, pURI);
+			if(! objects[0]) {
+				return false;
+			}
+			if(asValue) {
+				return objects[0].value;	
+			}
+			return objects[0];
+		}
+		
+		this.hasTriple = function(sURI, pURI, o) {
+			sURI = this.expandPName(sURI);
+			pURI = this.expandPName(pURI);
+			if(typeof o == 'string') {
+				o = { value: o };
+			}
+			
+			var hasObject = false;
+			var objects = this.getObjectsForSubjectPred(sURI, pURI);			
+			if(objects) {				
+				objects.forEach(function(obj) {
+					if(obj.value == o.value) {
+						hasObject = true;
+					}
+				});
+			} 			
+			return hasObject;
+		}
+		this.getObjectByValue = function(oValue) {
+			oValue = this.expandPName(oValue);
+			var allObjects = this.getAllObjects();
+			for(var i = 0; i< allObjects.length; i++) {
+				if(allObjects[i].value == oValue) {
+					return allObjects[i];
+				}
+			}
+			return false;
+		}
+		
+		this.addTriple = function(sURI, pURI, o) {
+			sURI = this.expandPName(sURI);
+			pURI = this.expandPName(pURI);
+			
+
+			//alert(sURI + " " + pURI + " " + o);
+			if(this.hasTriple(sURI, pURI, o)) {
+				return;
+			}			
+			if( ! this.hasSubject(sURI)) {
+				this.json[sURI] = { };
+				this.json[sURI][pURI] = [o];
+				return;
+			}
+			
+			if(this.hasSubject(sURI) && (! this.hasSubjectPred(sURI, pURI) ) ) {
+				this.json[sURI][pURI] = [o];
+				return;
+			}
+			
+			if( this.hasSubject(sURI) &&  this.hasSubjectPred(sURI, pURI) ) {
+				this.json[sURI][pURI].push(o);
+			}
+		}
+		
+		this.removeTriple = function(sURI, pURI, o) {
+			sURI = this.expandPName(sURI);
+			pURI = this.expandPName(pURI);			
+			if(this.hasTriple(sURI, pURI, o)) {
+				var oIndex=0;
+				this.json[sURI][pURI].forEach(function(obj, i) {
+					if (o.value == obj.value) {
+						oIndex = i;
+					}
+				});
+				this.json[sURI][pURI].splice(oIndex, 1);
+				
+				if(this.json[sURI][pURI].length == 0 ) {
+					delete(this.json[sURI][pURI]);
+				}
+				//TODO: if there are no preds, kill the subject
+				var killSubject = true;
+				for (var pred in this.json[sURI]) {
+					killSubject = false;
+				}
+				if(killSubject) {
+					delete(this.json[sURI]);
+				}
+				
+			}
+
+			
+		}
+		this.getSubjectURIs = function() {
+			var sURIs = [];
+			for (var sURI in this.json) {
+				sURIs.push(sURI);
+			}
+			return sURIs;
+		}
+		this.expandPName = function (pname) {
+			
+			var parts = pname.split(':');
+			if ( this.prefixMap[parts[0]] && (parts[0] != 'http') ) {
+				return this.prefixMap[parts[0]] + parts[1];
+			}
+			return pname;
+		}	
+	
+		this.mergeGraph = function(graph) {
+			for (var sURI in graph.json) {
+				for (var pURI in graph.json[sURI]) {
+					for each (o in graph.json[sURI][pURI]) {
+						this.addTriple(sURI, pURI, o);
+					}
+				}				
+			}
+		}
+	
+		this.mergeJSON = function(json) {
+			for (var sURI in json) {
+				for (var pURI in json[sURI]) {
+					for each (o in json[sURI][pURI]) {
+						this.addTriple(sURI, pURI, o);
+					}
+				}				
+			}			
+		}
+		this.getSubjectAsGraph = function(sURI) {
+			var json = {};
+			if(this.json[sURI]) {
+				json[sURI] = this.json[sURI];
+				return new Rubrick.Graph(json);				
+			} else {
+				return false;
+			}
+
+		}
+
+		/**
+		 * getSubjectPredAsGraph returns a subgraph with all the objects for a subject pred
+		 * equiv. to CONSTRUCT { <$sURI> <$pURI> ?o } WHERE { <$sURI> <$pURI> ?o }
+		 *
+		 */
+
+		this.getSubjectPredAsGraph = function(sURI, pURI) {
+			var json = {};
+			json[sURI] = {};
+			json[sURI][pURI] = this.getObjectsForSubjectPred(sURI, pURI);
+			return new Rubrick.Graph(json);
+		}
+
+		
+		/**
+		 * getPredObjectValueAsGraph returns a graph of the resource with the predicate and value
+		 *
+		 */
+		 
+		this.getPredObjectValueAsGraph = function(pURI, oValue) {
+			pURI = this.expandPName(pURI);
+			oValue = this.expandPName(oValue);
+			var retGraph = new Rubrick.Graph();
+			for(var sURI in this.json) {
+				if(this.hasTriple(sURI, pURI, {value: oValue })) {
+					//retGraph.addTriple(sURI, pURI, this.getObjectByValue(oValue));
+					var tmpJSON = {};
+					tmpJSON[sURI] = this.json[sURI];
+					var sGraph = new Rubrick.Graph(tmpJSON);
+					
+					retGraph.mergeGraph(sGraph);
+				}
+			}
+			return retGraph;
+		}
+		this.getSubjectTypeAsGraph = function(type) {
+			return this.getPredObjectValueAsGraph('http://www.w3.org/1999/02/22-rdf-syntax-ns#type', type);
+		},
+		this.getAllObjects = function() {
+			var objectsArray = [];
+			for(var sURI in this.json) {
+				for(var pURI in this.json[sURI]) {
+					objectsArray = objectsArray.concat(this.getObjectsForSubjectPred(sURI, pURI));
+				}
+			}
+			return objectsArray;
+		}
+		
+		this.objectValueCount = function(oValue) {
+			oValue = this.expandPName(oValue);
+
+			var count = 0;
+			var allObjects = this.getAllObjects();
+			allObjects.forEach(function(obj) {
+				if(obj.value == oValue) {
+					count++;
+				}
+			});
+			return count;
+			
+		}
+
+	
+		this.removeSubjectPred = function(sURI, pURI) {
+			sURI = this.expandPName(sURI);
+			pURI = this.expandPName(pURI);
+			delete this.json[sURI][pURI];
+		}
+		
+		this.getSubjectObjectValuesHashAroundPred = function(pURI, firstValOnly) {
+			pURI = this.expandPName(pURI);
+			var retObj = {};
+			for (var sURI in this.json) {
+				if(this.hasSubjectPred(sURI, pURI) ) {
+					if(firstValOnly) {
+						retObj[sURI] = this.getFirstObjectForSubjectPred(sURI, pURI, true);	
+					} else {
+						retObj[sURI] = this.getObjectsForSubjectPred(sURI, pURI);						
+					}
+				}				
+			}
+			return retObj;
+		}
+	},
+	
+
+
 	Recording :  function() {
-		this.creator = Rubrick.currUserURI;
+		
 		this.recordedLineValues = [];
 		this.page = jetpack.tabs.focused.url.stripSlash(); 
-		this.context = Rubrick.currContextURI;
+		//this.context = Rubrick.currContextURI;
 		this.note = '';
 	  
-
-
 		this.hasRecordedValue = function(rlvURI) {
 			if(this.recordedLineValues.indexOf(rlvURI) == -1) {
 				return false;
@@ -786,9 +1401,12 @@ Rubrick = {
 	}
 
 
-
-
 };
+
+
+
+
+
 
 
 /* Startup */ 
@@ -812,7 +1430,8 @@ jetpack.statusBar.append(
 jetpack.slideBar.append(
     {   width: 260, 
 		persist: false, 
-        html: ' <div class="slideBarPane" id="login"> <div class="slideBarPaneHeader"> <h2 class="user">Login/Register</h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <ul id="loginOps"> <li id="loginLink" class="focused"> <a>Login</a> </li> <li class="hidden" id="logoutLink"> <a>Logout</a> </li> <li id="createLink"> <a>New account</a> </li> </ul> <div class="clear"></div> <div id="loginInfo" class="hidden">Logged in as:<span id="displayUserName"></span></div> <div id="loginForm"> <p>Username: <input id="nick-login" type="text" size="15"></input></p> <p>Password: <input id="pwd-login" type="password" size="15"></input></p> <a id="loginGo">Go</a> </div> <div id="register" class="hidden"> <p>Username: <input id="nick" type="text" size="15"></input></p> <p>Email: <input id="email" type="text" size="15"></input></p> <p>Password: <input id="pwd" type="password" size="15"></input></p> <a id="registerLink">Go</a> </div> </div> </div> <div class="slideBarPane"> <div class="slideBarPaneHeader"> <h2 class="dropbox">Select Dropbox</h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <ul class="contextList" id="contextSelect"> </ul> <div class="contextRubrics"><h3>Rubrics</h3> <ul id="contextRubricsContainer"> </ul> </div>  </div> </div> <div class="slideBarPane" style="display:none;"> <div class="slideBarPaneHeader"> <h2 class="rubrick">Select Rubric</h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <ul class="rubricList" id="rubricSelect"> </ul> </div> </div> <div class="slideBarPane" id="selectedRubric"> <div class="slideBarPaneHeader"> <h2 class="rubricName"> </h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <div id="rubricMetaContainer"> <p class="rubricDesc"></p> <h3>Rubric Lines </h3> <ul class="rubricLineList"> </ul> </div> </div> </div> <div class="slideBarPane hidden" id="recordings"> <div class="slideBarPaneHeader"> <h2 class="rubrick"> Records </h2> <div class="maxMin"> <img align="baseline" class="min" src="http://code.rubrick-jetpack.org/images/minimize.png"></img> <img align="baseline" class="max" src="http://code.rubrick-jetpack.org/images/maximize.png"></img> </div> </div> <div class="slideBarPaneBody"> <ul class="rubricLineList"> <li class="recording"> <a>Patrick</a> </li> <li class="rubricLineName"> <a>Martha</a> </li> <li class="rubricLineName"> <a>Jerry</a> </li> <li class="rubricLineName"> <a>Andy</a> </li> </ul> </div> </div><div class="slideBarPane" id="createRubricLink"><div class="slideBarPaneHeader"><h2><a target="_blank" href="http://code.rubrick-jetpack.org/rubricMaker.php">Create Rubric</a></h2></div></div>',
+
+        html: '  <div class="slideBarPane" id="login">  <div class="slideBarPaneHeader">  <h2 class="user">Login/Register</h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <ul id="loginOps">    <li id="loginLink" class="focused">    <a>Login</a>    </li>    <li class="hidden" id="logoutLink">    <a>Logout</a>    </li>    <li id="createLink">    <a>New account</a>    </li>  </ul>  <div class="clear"></div>  <div id="loginInfo" class="hidden">Logged in as:<span id="displayUserName"></span></div>  <div id="loginForm">    <p>Username: <input id="nick-login" type="text" size="15"></input></p>    <p>Password: <input id="pwd-login" type="password" size="15"></input></p>    <a id="loginGo">Go</a>  </div>  <div id="register" class="hidden">    <p>Username: <input id="nick" type="text" size="15"></input></p>    <p>Email: <input id="email" type="text" size="15"></input></p>    <p>Password: <input id="pwd" type="password" size="15"></input></p>    <a id="registerLink">Go</a>  </div>  </div>  </div>  <div class="slideBarPane">  <div class="slideBarPaneHeader">  <h2 class="dropbox">Select Dropbox</h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <ul class="contextList" id="contextSelect"> </ul>  <div class="contextRubrics">    <h3>Rubrics</h3>    <ul id="contextRubricsContainer"> </ul>  </div>  </div>  </div>  <div class="slideBarPane" style="display:none;">  <div class="slideBarPaneHeader">  <h2 class="rubrick">Select Rubric</h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <ul class="rubricList" id="rubricSelect"> </ul>  </div>  </div>  <div class="slideBarPane" id="selectedRubric">  <div class="slideBarPaneHeader">  <h2 class="rubricName"> </h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <div id="rubricMetaContainer">    <p class="rubricDesc"></p>    <h3>Rubric Lines </h3>    <ul class="rubricLineList"> </ul>  </div>  </div>  </div>  <div class="slideBarPane" id="submitPane">  <div class="slideBarPaneHeader">  <h2 class="submission">Submit</h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <div id="submissionInfo">    <p>Add a note (optional)</p>    <textarea id="submissionNoteArea" rows="5" ></textarea><br/>    <a id="submitSubmission">Submit to <span id="submissionContextName">(Curr Context Name)</span></a>  </div>  </div>  </div>  <div class="slideBarPane hidden" id="recordings">  <div class="slideBarPaneHeader">  <h2 class="rubrick"> Records </h2>  <div class="maxMin">    <img align="baseline" class="min"    src="http://code.rubrick-jetpack.org/images/minimize.png"></img>    <img align="baseline" class="max"    src="http://code.rubrick-jetpack.org/images/maximize.png"></img>  </div>  </div>  <div class="slideBarPaneBody">  <ul class="rubricLineList">    <li class="recording">    <a>Patrick</a>    </li>    <li class="rubricLineName">    <a>Martha</a>    </li>    <li class="rubricLineName">    <a>Jerry</a>    </li>    <li class="rubricLineName">    <a>Andy</a>    </li>  </ul>  </div>  </div>  <div class="slideBarPane" id="createRubricLink">  <div class="slideBarPaneHeader">  <h2>    <a target="_blank" href="http://localhost/testJS/jetpacks/rubrick/rubricMaker.php">Create    Rubric</a>  </h2>  </div>  </div>',
 
         icon: Rubrick.icon,
            
@@ -820,7 +1439,8 @@ jetpack.slideBar.append(
             var styleEl = widget.contentDocument.createElement('link');
             styleEl.setAttribute('rel', 'stylesheet');
             styleEl.setAttribute('type', 'text/css');
-            styleEl.setAttribute('href', 'http://code.rubrick-jetpack.org/css/slidebar.css');
+            styleEl.setAttribute('href', 'http://localhost/testJS/jetpacks/rubrick/css/slidebar.css');
+//            styleEl.setAttribute('href', 'http://code.rubrick-jetpack.org/css/slidebar.css');
             widget.contentDocument.getElementsByTagName('head')[0].appendChild(styleEl);        
             Rubrick.slideWidget = widget;
 			$('.min', widget.contentDocument).click(Rubrick.minimizePane);
@@ -830,10 +1450,12 @@ jetpack.slideBar.append(
 			$('#loginLink', widget.contentDocument).click(Rubrick.showLogin);
 			$('#registerLink', widget.contentDocument).click(Rubrick.register);
 			$('#loginGo', widget.contentDocument).click(Rubrick.login);
+			$('#submitSubmission', widget.contentDocument).click(Rubrick.postSubmission);
+			$('#submitPane', Rubrick.slideWidget.contentDocument).hide();
 			Rubrick.getAvailableContexts();
 			Rubrick.checkLoggedIn();
 
-         },
+         }
              
    }
 );

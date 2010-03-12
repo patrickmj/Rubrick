@@ -1,92 +1,56 @@
 <?php
 
+require_once('RubrickBuilder.php');
+require_once('RubricLineValue.php');
 
 
-class RubricLine {
-    
-    public $description;
-    public $tags = array();
-    public $order;
-	public $name;
-    public $lineValues = array();
-	public $uri;
-    public $graph ;
 
+/*
+ *	class:	RubrickLine
+ *	
+ *
+*/
 
-    public function __construct($lineObj) {
+class RubricLine extends RubrickBuilder
+{
 
-		global $graphConfig;
+	public $typeURI = 'r:RubricLine';
+	public $revPred = 'r:hasLine';
+	public $valuesCount = 5;
+	
+	/**
+	 * buildAddGraph
+	*/
 
-		$this->graph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $graphConfig);
-	    $res = ARC2::getComponent('PMJ_ResourcePlusPlugin', $graphConfig);
+	public function buildAddGraph()
+	{
+   
+        $this->_addCreatorToThisRes();
+		$this->_addCreatedToThisRes();
 		
+		
+		$lineValuesGraph = $this->buildLineValues($this->valuesCount);
+		$this->addGraph->mergeResourceGraph($lineValuesGraph);
+		$this->addResourceToGraph($this->res, 'add');
+		$this->addRevRelTriples('add');
+	}
 
-
-		if($lineObj->action == 'create') {
-			$this->mintURI($lineObj);
-			$res->setURI($this->uri);
-		} else {
-			$res->setURI($lineObj->rubrickLineURI);
-		}		
-		$res->addPropValue('rdf:type', 'r:RubricLine', 'uri');
-	    $lineVals = ARC2::getComponent('PMJ_ResourcePlusPlugin', $graphConfig);
-
-        foreach( $lineObj->fields as $fieldObj) {
-            foreach($fieldObj as $field=>$valArray) {
-                switch($field) {
-                    case 'Tags':
-						$tagsGraph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $graphConfig);   
-	                    foreach($valArray  as $tag) {
-//							$tagsGraph->merge($this->processTag(urldecode($tag)));
-                        }
-                    
-                    break;
-                    
-                    case 'Description':
-						$res->addPropValue('r:description', urldecode($valArray[0]), 'literal');
-
-                    break;
-
-					case 'Name':
-						$res->addPropValue('r:name', urldecode($valArray[0]), 'literal');
-					break;
-
-					case 'Public':
-						$res->addPropValue('r:isPublic', (string) $valArray[0], 'literal');
-					break;
-
-                    case 'order':
-						$res->addPropValue('r:order', (string) $valArray[0], 'literal');
-
-                    break;
-                                        
-                    default:
-                        $newLineVal = new RubricLineValue($fieldObj, $this->uri); 
-						$this->lineValues[] = $newLineVal;
-						$this->graph->mergeResourceGraph($newLineVal->graph);
-						$res->addPropValue('r:hasLineValue', $newLineVal->uri, 'uri');
-                    break;
-                }                        
-            }
-        }
-
-		$this->graph->addResource($res);		
-
-    }
-
-
-
-    public function mintURI($lineObj) {
-		//TODO: handle case when URI is already known!
-		$this->uri = 'http://data.rubrick-jetpack.org/RubricLines/' . sha1( serialize($lineObj) . time() );
-		return $this->uri;
-    }
-    
-    public function buildGraph() {
-    
-    }
+	public function buildLineValues($vals) {
+		$graph = $this->_getEmptyGraph();
+		$val = 0;
+		while($val < $vals) {
+			$newRubricLineValue = new RubricLineValue(false, array('properties' =>
+																array('rubricLineURI'=>$this->uri , 'score'=>$val)
+															)
+													 );
+			$newRubricLineValue->buildAddGraph();
+			
+			$graph->mergeResourceGraph($newRubricLineValue->addGraph);
+			$val++;
+		}
+		return $graph;
+	}
 }
-
 
 
 ?>

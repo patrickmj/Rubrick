@@ -52,6 +52,8 @@ class PMJ_ResourcePlusPlugin extends ARC2_Resource
 	public function triplesCount()
 	{
 		$count = 0;
+		if( ! isset($this->index[$this->uri])) return 0;
+
 		foreach($this->index[$this->uri] as $p=>$oArray) {
 			$count = $count + count($oArray);
 		}
@@ -111,7 +113,7 @@ class PMJ_ResourcePlusPlugin extends ARC2_Resource
 
 	public function getTypes()
 	{
-		return $this->flattenObjects($this->getProps('rdfs:type') );
+		return $this->flattenObjects($this->getProps('rdf:type') );
 	}
 
 

@@ -62,49 +62,57 @@ contextsInit = {defaultValue:'http://code.rubrick-jetpack.org/Context1',
                 };
 */
             function init() {
-                RowsManager.init(initArray, fieldsConfigArray);
-                RowsManager.addRow();
-                RubricMeta = {name : FieldFactory.getField('ShortTextField', 'rName', { defaultValue: 'Rubric Name' } ), 
-                                     desc : FieldFactory.getField('LongTextField', 'rDesc', { defaultValue: 'Rubric Description' } ), 
-                                     tags :FieldFactory.getField('ShortTextField', 'rTags', {defaultValue: 'Rubric Tags' , allowMultiple: 'true' }),
-                                     public : FieldFactory.getField('BooleanEnumerationField', 'rPublic', {defaultValue: 'true'} ) ,
-                                     contexts: FieldFactory.getField('EnumerationField', 'rContexts', contextsInit )
+                Rubrick.ui.RowsManager.init(initArray, fieldsConfigArray);
+                Rubrick.ui.RowsManager.addRow();
+                Rubrick.ui.RubricMeta = {name : Rubrick.ui.FieldFactory.getField('ShortTextField', 'rName', { defaultValue: 'Rubric Name' } ), 
+                                     desc : Rubrick.ui.FieldFactory.getField('LongTextField', 'rDesc', { defaultValue: 'Rubric Description' } ), 
+                                     tags : Rubrick.ui.FieldFactory.getField('ShortTextField', 'rTags', {defaultValue: 'Rubric Tags' , allowMultiple: 'true' }),
+                                     public : Rubrick.ui.FieldFactory.getField('BooleanEnumerationField', 'rPublic', {defaultValue: 'true'} ) ,
+                                     contexts: Rubrick.ui.FieldFactory.getField('EnumerationField', 'rContexts', contextsInit )
                                      } ;
                 rNameContainer = jQuery.find('#rubric-name-container') [0];
                 rDescContainer =  jQuery.find('#rubric-description-container') [0];
                 rTagsContainer =  jQuery.find('#rubric-tags-container') [0];
                 rPublicContainer = jQuery.find('#rubric-public-container')[0];
-                $('#rubric-contexts-container').append(RubricMeta.contexts.container);
+                $('#rubric-contexts-container').append(Rubrick.ui.RubricMeta.contexts.container);
                 
-                $(rNameContainer) .append(RubricMeta.name.container);
-                
-                
-                $(rDescContainer) .append( RubricMeta.desc.container);
+                $(rNameContainer) .append(Rubrick.ui.RubricMeta.name.container);
                 
                 
-                $(rTagsContainer) .append( RubricMeta.tags.container);
+                $(rDescContainer) .append( Rubrick.ui.RubricMeta.desc.container);
                 
-                $(rPublicContainer).append(RubricMeta.public.container);
+                
+                $(rTagsContainer) .append( Rubrick.ui.RubricMeta.tags.container);
+                
+                $(rPublicContainer).append(Rubrick.ui.RubricMeta.public.container);
             }
         
 			/* buildJSON is a holdover from the original use of this code, which didn't use JSON.stringify because of cross-browser issues */
             function buildJSON() {
-                RowsManager.setJSON();
+                Rubrick.ui.RowsManager.setJSON();
                 var jsonStr = ' {  "rName" : "' + RubricMeta.name.values[0]  +  '" , ' ; 
                 
                 
                 jsonStr += '  "rubricMeta" : [ ';
-                for each (var field in RubricMeta) {
-
-                    jsonStr += field.getJSON();
-                    jsonStr += ' ,' ;
+                for each (var field in Rubrick.ui.RubricMeta) {
+                    if(field.fieldName == 'rContexts') {
+                        jsonStr += '{ "rContexts" : [  ';
+                            for each(li in field.inputs) {
+                                jsonStr += '"' + encodeURIComponent( $(li).attr('uri') ) + '" ,';
+                            }
+                        jsonStr = jsonStr.slice(0, jsonStr.length -1); // strip last comma
+                        jsonStr += ' ]  } ,';
+                    } else {
+                        jsonStr += field.getJSON();
+                        jsonStr += ' ,' ;
+                    }
                 }
                 jsonStr = jsonStr.slice(0, jsonStr.length -1); // strip last comma
                 jsonStr += ' ] ,  ';
                 
                 
                 jsonStr += '  "rubricLines" : ' ;
-                jsonStr += RowsManager.json ;
+                jsonStr += Rubrick.ui.RowsManager.json ;
                 
                 jsonStr += ' } ';
                 return jsonStr;
@@ -112,9 +120,10 @@ contextsInit = {defaultValue:'http://code.rubrick-jetpack.org/Context1',
                     
 
             function finishContext() {
-                $('#createContextContainer').hide();
+
                 var newName = $('#newContextName').val();
                 var newDesc = $('#newContextDesc').val();
+
                 var fieldManager = $('#rubric-contexts-container').find('div')[0].manager;
                 var newVal = 'new' + fieldManager.allowedValues.length;
                 fieldManager.valueToLabelMap[newVal] = newName;
@@ -122,24 +131,19 @@ contextsInit = {defaultValue:'http://code.rubrick-jetpack.org/Context1',
                 fieldManager.valueToLabelMap[newVal] = newName;
                 fieldManager.addInput(newVal);
 
-                var newContext = {};
-                newContext.action = 'create';
-                newContext.name = newName;
-                newContext.desc = newDesc;
-                newContexts[newVal] = newContext;
+
             }
 
 
             function submitRubric() {
                 rj = buildJSON() ;
-				cj = JSON.stringify(newContexts);
+				//cj = JSON.stringify(newContexts);
                 var button = document.getElementById('submitButton');
                 button.rj = rj;
                 button.cj = cj;
-                button.test = 'tesssst!';
-                $.post('http://code.rubrick-jetpack.org/createRubric.php', { rJSON : rj , cJSON: cj  } );           
+                
+                $.post('http://code.rubrick-jetpack.org/createRubric.php', { rJSON : rj   } );           
             }
         
         
-test = 'test';
         

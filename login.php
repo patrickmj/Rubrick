@@ -7,11 +7,15 @@ include_once(ARC_DIR . 'ARC2.php');
 $store = ARC2::getStore($config);
 session_start();
 
-
+/*
 $nick = isset($_POST['nick']) ? $_POST['nick'] : $_SESSION['nick'];
 $pwd = isset($_POST['pwd']) ? $_POST['pwd'] : $_SESSION['pwd'];
 $pwdHash = md5($_POST['pwd']);
+*/
 
+$nick = 'pmj';
+$pwd = 'pmj';
+$pwdHash = md5('pmj');
 
 
 if(isset($nick) && isset($pwdHash) ) {

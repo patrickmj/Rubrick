@@ -9,14 +9,11 @@
 <!DOCTYPE html SYSTEM "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
     <head>
-        <title>RubrickMaker</title>
+        <title>RubricMaker</title>
         <link rel="stylesheet" type="text/css" href="./css/rubrickmaker.css"></link>
 
-<?php
-
-    
-    if( ! $loggedIn ):
-    
+<?php    
+    if( ! $loggedIn ):    
 ?>    
     </head>
     <body>
@@ -28,14 +25,9 @@
 ?>
 
 
-        <script type="text/javascript" src="./js/jquery/jquery.js"></script>
-        <script type="text/javascript" src="./js/rubrick/RowsClasses.js"></script>
-        <script type="text/javascript" src="./js/rubrick/FieldsClasses.js"></script>
-        <script type="text/javascript" src="./js/rubrick/RubricMaker.js"></script>
-
         <script type="text/javascript">
 <?php
-
+/*
     $contextsInitObj = new StdClass();
   //  $contextsInitObj->defaultValue = 'http://code.rubrick-jetpack.org/vocab/Context1';
     $contextsInitObj->allowedValues = array();
@@ -67,13 +59,18 @@ echo "initArray = []; ";
 
     
     //build the available contexts data here.
-    
+*/    
 ?>           
+/*
+ $(document).ready(function(){
+   init();
+ });
+*/
 
         </script>
 
     </head>
-    <body onload="init();">
+    <body >
 <h2>Build your rubric below</h2>
         <div id="rubric-meta">
             <div id="rubric-name-container">
@@ -90,14 +87,14 @@ echo "initArray = []; ";
             </div>
             <div id="rubric-contexts-container">
                 <h3>Connect to DropBoxes</h3>
-                <a onclick="$('#createContextContainer').show()">Create New Dropbox</a>
+                <a id="showContextCreate">Create New Dropbox</a>
 
             </div>
             <div id="createContextContainer" style="display: none;">
             <p>Dropbox Name: <input id="newContextName" type="text"  ></input></p>
             <p>Dropbox Description: </p>
                 <textarea id="newContextDesc" type="text"  ></textarea>
-            <button onclick="finishContext()">Done</button>
+            <button id="createContextDone">Done</button>
             </div>
         </div>
 
@@ -117,9 +114,14 @@ echo "initArray = []; ";
         </table>
 
 
-        <button id="addRubrickLine" onclick="RowsManager.addRow();">Add Line</button>
+        <button id="addRubrickLine">Add Line</button>
 
-        <button id="submitButton" onclick="submitRubric();">Submit</button>
+        <button id="submitButton">Submit</button>
         <input type="hidden" id="input-hiddenJSON"/>
+        
+        
+        <div id="debug">
+            
+        </div>
     </body>
 </html>

@@ -25,7 +25,7 @@ class PermissionsManager {
 		// e.g. r_d:Context sioc:has_creator r_d:Me
 
 		$baseQuery = $this->prefixes;
-		$baseQuery .= "SELECT DISTINCT ?pName ?context
+		$baseQuery .= "SELECT DISTINCT ?pName ?context ?perm ?ent
 
 					WHERE {
 					 ?context r:hasPermissioning ?ping ;
@@ -38,7 +38,7 @@ class PermissionsManager {
 
 		$allQ = $this->prefixes;
 		
-		$allQ .= "SELECT DISTINCT ?pName ?context
+		$allQ .= "SELECT DISTINCT ?pName ?context ?perm
 
 			 WHERE {
 			?context r:hasPermissioning ?perming .
@@ -48,28 +48,72 @@ class PermissionsManager {
 		}
 		
 		";
-		$this->queries['baseQuery'] = $baseQuery;	
 		$this->queries['all'] = $allQ;
+		$this->queries['baseQuery'] = $baseQuery;	
+		
 		
 	}
 
 	function doQueries() {
 		foreach($this->queries as $key=>$q) {
-
+			if($key == 'all') {
+				$ent = "r:all";
+			}
 			//merge result sets of queries into perms
 			$rs = $this->store->query($q);
+			//print_r($rs);
 			if(is_array($rs['result'])) {
 				foreach($rs['result']['rows'] as $row) {
-					$permName = $row['pName'];
-					$this->perms[$row['context']][] =  $permName;
+					if( isset($row['ent'] ) ) {
+						$ent = $row['ent'];
+					}
+					//$permName = $row['pName'];
+					//$this->perms[$row['context']][] =  $permName;
+					$permObj = new stdClass();
+					$permObj->perm = $row['perm'];
+					$permObj->allowed[] = $ent;
+					$this->perms[$row['context']][] = $permObj;
+					
+					//$this->perms[$row['context']][] =  $row['perm'];
+					
+					/*
+					if(isset($this->perms[$row['context']][$row['perm']] )  ) {
+						$this->perms[$row['context']][$row['perm']] = array( $ent );
+					} else {
+						
+						$this->perms[$row['context']][$row['perm']] = array($ent );
+					}
+					*/
 				}
 			}
 		}
 	}
 
+	function hasPermission($context, $perm) {
+		$parts = explode(':', $perm);
+		
+		if($parts[0] == "r") {
+			$perm = 'http://code.rubrick-jetpack.org/vocab/' . $parts[1];
+		}
+		if($this->perms[$context]) {
+			foreach($this->perms[$context] as $permObj) {
+				if ($permObj->perm == $perm) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 }
 
+
+
 /*
+ 
+ Structure for setting up basic permission in a new installation
+ 
+ 
+ 
 rd:newContext r:hasPermissioning rd:newPing1, rd:newPing2, rd:newPing3 ; 
    sioc:has_creator rd:currUser .
 
@@ -100,14 +144,17 @@ r:creator a r:Entity ;
 r:addRubric a r:Permission ; 
 	r:permissionName "addRubric"  . 
 
+r:submitItems a r:Permission ; 
+	r:permissionName "submitItems " . 
+
 r:all a r:Entity .
 
-r:Context1 a r:Context ;
-	r:name "Demo" ;
-    r:description "Just a demo"; 
+<http://data.rubrick-jetpack.org/Context/4aee05aba12ea2097122eadc6b1e69dc06ad40dc> a r:Context ;
+
 	r:hasPermissioning r:allRecordPermissioning ; 
 	r:hasPermissioning r:allViewRecordingsPermissioning ; 
 	r:hasPermissioning r:allGetReportPermissioning ;
+	r:hasPermissioning r:allSubmitItems ; 
 	r:hasPermissioning r:allAddRubric . 
 
 r:allAddRubric a r:Permissioning ;
@@ -126,7 +173,19 @@ r:allGetReportPermissioning  a r:Permissioning ;
 	r:hasPermission r:getReport ;
     r:allow r:all . 
 
+r:record r:permissionName "record" .
+r:addRubric r:permissionName "addRubric".
+r:viewRecordings r:permissionName "viewRecordings".
+r:getReport r:permissionName "getReport".
 
+
+r:submitItems a r:Permission ; 
+	r:permissionName "submitItems" . 
+
+
+r:allSubmitItems a r:Permissioning ; 
+	r:hasPermission r:submitItems ;
+	r:allow r:all . 
 
 */
 

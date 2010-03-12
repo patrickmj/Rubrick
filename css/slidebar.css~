@@ -26,27 +26,32 @@ h2 {
 }
 
 h2.ops {
-	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Rcog.png');
+	background-image: url('http://code.rubrick-jetpack.org/images/Rcog.png');
 }
 
 h2.recording {
-	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Rreport.png');
+	background-image: url('http://code.rubrick-jetpack.org/images/Rreport.png');
 }
 
 h2.user {
-	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Ruser.png');
+	background-image: url('http://code.rubrick-jetpack.org/images/Ruser.png');
 }
 
 h2.rubrick {
-	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Rbrick.png');
+	background-image: url('http://code.rubrick-jetpack.org/images/Rbrick.png');
 }
 
 h2.dropbox {
-	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Rbox.png');
+	background-image: url('http://code.rubrick-jetpack.org/images/Rbox.png');
 }
 
 h2.report {
-	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Rreport.png');
+	background-image: url('http://code.rubrick-jetpack.org/images/Rreport.png');
+}
+
+
+h2.report {
+	background-image: url('http://code.rubrick-jetpack.org/images/page_go.png');
 }
 
 h3 {
@@ -214,14 +219,14 @@ li#loginLink , li#createLink  {
 }
 
 li#loginLink > a {
-	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Ruser_login.png');
+	background-image: url('http://code.rubrick-jetpack.org/images/Ruser_login.png');
 	padding-left: 18px;
 	background-position:0px;
 	background-repeat: no-repeat;
 }
 
 li#createLink > a {
-	background-image: url('http://localhost/testJS/jetpacks/rubrick/images/Ruser_add.png');
+	background-image: url('http://code.rubrick-jetpack.org/images/Ruser_add.png');
 	padding-left: 18px;
 	background-position:0px;
 	background-repeat: no-repeat;

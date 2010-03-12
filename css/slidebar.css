@@ -37,7 +37,7 @@ h2.user {
 	background-image: url('http://code.rubrick-jetpack.org/images/Ruser.png');
 }
 
-h2.rubrick {
+h2.rubric {
 	background-image: url('http://code.rubrick-jetpack.org/images/Rbrick.png');
 }
 
@@ -47,6 +47,11 @@ h2.dropbox {
 
 h2.report {
 	background-image: url('http://code.rubrick-jetpack.org/images/Rreport.png');
+}
+
+
+h2.submission {
+	background-image: url('http://code.rubrick-jetpack.org/images/page_go.png');
 }
 
 h3 {

@@ -1,45 +1,29 @@
 <?php
 
+require_once(CLASSES_DIR . 'RubrickBuilder.php');
 
+class RubricLineValue extends RubrickBuilder {
 
-class RubricLineValue {
-    public $graph ;
-    public $description;
-    public $score;
-    public $uri;
-	public $lineURI;
-    public $field; 
+	public $typeURI = 'r:RubricLineValue';
+	public $revPred = 'r:hasLineValue';
 
-
-    public function __construct($fieldObj, $lineURI) {
-		global $graphConfig;    
-		$this->lineURI = $lineURI;
-
+	public function buildAddGraph() {
+		//Getting the description out is slag, at least until I can figure out how to redo the javascript fields
+		//print_r($this->postData);
+		$this->revResourceURI = $this->rubricLineURI;
 		
-	    $res = ARC2::getComponent('PMJ_ResourcePlusPlugin', $graphConfig);
-
-
-		$this->graph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $graphConfig);
+		$this->res->addPropValue('r:score', $this->score, 'literal');
+		if(isset($desc) ) {
+			$this->res->addPropValue('r:description', $desc, 'literal');	
+		}
 		
-
-		
-        foreach($fieldObj as $key=>$val) {
-            if($key == 'score') {
-                $this->score = $val;				
-            } else {
-                $this->description= urldecode($val[0]);				
-				$this->uri = $lineURI . '-' . $key;
-            }
-        
-        }
-		$res->setURI($this->uri);
-		$res->addPropValue('rdf:type', 'r:RubricLineValue', 'uri');
-		$res->addPropValue('r:score', $this->score, 'literal');
-		$res->addPropValue('r:description', $this->description, 'literal');
-		$this->graph->addResource($res);
-    }
-
-
+		$this->addResourceToGraph($this->res, 'add');
+		$this->addRevRelTriples('add');
+	}
+	
+	public function mintURI() {
+		return $this->rubricLineURI . "-s" . $this->score;
+	}
 } 
 
 

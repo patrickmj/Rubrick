@@ -18,7 +18,7 @@ if (!$store->isSetUp()) {
 /* Parse what ARC can from the page */
 
 //this can take a bit long, though.
-try{
+
 
 	$parser = ARC2::getSemHTMLParser();
 	$parser->parse($_POST['page']);
@@ -27,10 +27,7 @@ try{
 
 	$q = 'INSERT INTO <>  { '  . $parser->toNTriples($triples) . ' } ' ;
 	$parseRS = $store->query($q);
-} catch(Exception $e) {
 
-
-}
 
 
 $graph = ARC2::getComponent('PMJ_ResourceGraphPlugin', $graphConfig);
@@ -48,8 +45,8 @@ $recordingRes->addPropValue('r:hasRubric', $_POST['rubric'], 'uri');
 
 
 
-if(is_array($_POST['lineValues'])) {
-	foreach($_POST['lineValues'] as $lineValueURI) {
+if(is_array($_POST['r:hasLineValues'])) {
+	foreach($_POST['r:hasLineValues'] as $lineValueURI) {
 		$recordingRes->addPropValue('r:hasLineValue', $lineValueURI, 'uri');
 	}
 } else {
